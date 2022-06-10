@@ -74,7 +74,7 @@ def backtest_signal(
     position[0]=0.0
     #list() io比series快
     openprice_l=openprice.tolist()
-    position_l=position.tolist()   
+    position_l=position.tolist()
     l=[]
     #用position.size-1,因為最後一天+1是沒東西的, period_profit那行會有error,雖然還是可以跑
     for i in range(0,position.size-1,1):
@@ -147,8 +147,7 @@ print('買進持有MDD:',MDD)
 #4.2.3.計算兩檔商品做成投資組合的報酬率
 ############################################
 #a.選取時間範圍重複的資料
-begin_time=min(df_FXFR1.index[0]
-,df_MXFR1.index[0])
+begin_time=min(df_FXFR1.index[0],df_MXFR1.index[0])
 begin_time_s=str(begin_time)
 df_FXFR1=df_FXFR1[begin_time_s:]
 df_MXFR1=df_MXFR1[begin_time_s:]

@@ -36,7 +36,16 @@ api.login(
     contracts_timeout=10000,
     contracts_cb=lambda security_type: print(f"{repr(security_type)} fetch done.")
 )
-
+#登入永豐金證券的憑證
+CA_passwd=''
+if(CA_passwd==''):
+    CA_passwd=input("Please input CA PASSWORD:\n")
+CA='c:\ekey\\551\\'+person_id+'\\S\\Sinopac.pfx'
+result = api.activate_ca(\
+    ca_path=CA,\
+    ca_passwd=CA_passwd,\
+    person_id=person_id,\
+)
 #取得股票0050的物件
 contract_0050 = api.Contracts.Stocks["0050"]
 #取得小型台指近月的物件

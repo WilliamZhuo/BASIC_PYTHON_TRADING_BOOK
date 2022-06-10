@@ -13,32 +13,9 @@ import pandas as pd
 import numpy
 import backtesttool
 
-#從資料庫讀取小型台指歷史資料
-df_MXFR1=kbars.readKbarsFromDB('MXFR1')
-df_MXFR1=kbars.resampleKbars(df_MXFR1,period='1h')
-close=df_MXFR1['Close']
-high=df_MXFR1['High']
-low=df_MXFR1['Low']
-#選項:
-#'MACD'
-#'KD'
-#'RSI'
-#'BBAND'
-#'PriceChannel'
-#'Grid'
-target='PriceChannel'
-
 #########################################
-#5.1 MACD指標
+#MACD指標
 ###########################################
-#製作MACD指標
-#macd:快線,12日均線(EMA)-26日均線(EMA)
-#macdsignal:慢線,快線的九天平均(EMA)
-#macdhist:MACD柱,快線-慢縣
-macd, macdsignal, macdhist =talib.MACD(close
-           ,fastperiod=12 
-           ,slowperiod=26 
-           ,signalperiod=9)
 #使用快慢線交叉當作買賣訊號
 def createSignalMACD(close,
                  periodFast,
@@ -100,39 +77,9 @@ def OptimizeMACD(
                     bestperiodSignal=periodSignal
                     
     return bestret,bestret_series,(bestperiodFast,bestperiodSlow,bestperiodSignal)
-
-if(target=='MACD'):
-    #最佳化Fast,Slow,Signal
-    rangeFast=numpy.arange(2,100,1,dtype=int)
-    rangeSlow=numpy.arange(2,100,1,dtype=int)
-    rangeSignal=numpy.arange(2,100,1,dtype=int)
-    bestret,bestret_series,parameters=OptimizeMACD(
-            df_MXFR1,
-            rangeFast,#=numpy.arange(2,100,1,dtype=int)
-            rangeSlow,#=numpy.arange(2,100,1,dtype=int)
-            rangeSignal#=numpy.arange(2,100,1,dtype=int)
-            )
-    print('MACD bestret:'+str(bestret))
-    print('MACD MDD:'+str(backtesttool.calculatMDD(bestret_series)))
-    
-
 #########################################
-#5.2 KD指標
+#KD指標
 ###########################################
-
-#裡面的參數是預設值,如果把fastk_period的數值改成9就是坊間使用的KD指標設定
-#RSV線:(收盤價-最近a天最低價)/(最近a天最高價-最近a天最低價), a=fastk_period
-#slowk為K值=k天RSV平均,b=slowk_period
-#slowd為D值=d天slowk平均,c=slowd_period
-#K往上穿越D為黃金交叉,做多
-#K往下穿越D為死亡交叉,做空
-slowk, slowd = talib.STOCH(high, low, close,
-                     fastk_period=5,
-                     slowk_period=3, 
-                     slowk_matype=talib.MA_Type.SMA,
-                     slowd_period=3,
-                     slowd_matype=talib.MA_Type.SMA
-                     )
 #使用KD交叉當作買賣訊號
 def createSignalKD(high,low,close,
                  fastk=5,
@@ -198,26 +145,9 @@ def OptimizeKD(
                     
     return bestret,bestret_series,(best_fastk,best_slowk,best_slowd)
 
-if(target=='KD'):
-    #最佳化fastk,slowk,slowd
-    range_fastk=numpy.arange(2,100,1,dtype=int)
-    range_slowk=numpy.arange(2,100,1,dtype=int)
-    range_slowd=numpy.arange(2,100,1,dtype=int)
-    bestret,bestret_series,parameters=OptimizeKD(
-        df_MXFR1,
-        range_fastk,
-        range_slowk,
-        range_slowd
-        )
-    print('KD bestret:'+str(bestret))
-    print('KD MDD:'+str(backtesttool.calculatMDD(bestret_series)))
-    
 #########################################
-#5.3 RSI指標
+#RSI指標
 ###########################################
-#定義為n日內漲幅平均值/(n日內跌幅平均值+n日內漲幅平均值)
-real = talib.RSI(close, timeperiod=14)  
-
 #使用RSI往上穿越longTH做多,往下穿越shortTH做空的買賣策略
 #longTH>shortTH,longTH預設值為70,shortTH預設值為30
 def createSignalRSI(close,
@@ -276,30 +206,9 @@ def OptimizeRSI(
                     
     return bestret,bestret_series,(best_period,best_longTH,best_shortTH)
 
-if(target=='RSI'):
-    #最佳化period,longTH,shortTH
-    range_period=numpy.arange(2,100,1,dtype=int)
-    range_longTH=numpy.arange(0,100,1,dtype=int)
-    range_shortTH=numpy.arange(0,100,1,dtype=int)
-    bestret,bestret_series,parameters=OptimizeRSI(
-        df_MXFR1,
-        range_period,
-        range_longTH,
-        range_shortTH
-        )
-    print('RSI bestret:'+str(bestret))
-    print('RSI MDD:'+str(backtesttool.calculatMDD(bestret_series)))
-    
-
 #########################################
-#5.4 布林通道
+#布林通道
 ###########################################
-upperband, middleband, lowerband = \
-    talib.BBANDS(close, 
-                 timeperiod=5,
-                 nbdevup=2,
-                 nbdevdn=2, 
-                 matype=talib.MA_Type.SMA)
 #這邊的布林通道交易訊號使用以下連結的
 #https://www.investopedia.com/trading/using-bollinger-bands-to-gauge-trends/#:~:text=Bollinger%20Bands%C2%AE%20are%20a%20trading%20tool%20used%20to%20determine,lot%20of%20other%20relevant%20information.
 #Create Multiple Bands for Greater Insight
@@ -371,24 +280,9 @@ def OptimizeBBAND(
                     
     return bestret,bestret_series,(best_period,best_SmallStdDev,best_LargeStdDev)
 
-if(target=='BBAND'):
-    #最佳化period,SmallStdDev,LargeStdDev
-    range_period=numpy.arange(2,100,1,dtype=int)
-    range_SmallStdDev=numpy.arange(0.5,5,0.5,dtype=float)
-    range_LargeStdDev=numpy.arange(0.5,5,0.5,dtype=float)
-    bestret,bestret_series,parameters=OptimizeBBAND(
-        df_MXFR1,
-        range_period,
-        range_SmallStdDev,
-        range_LargeStdDev
-        )
-    print('BBAND bestret:'+str(bestret))
-    print('BBAND MDD:'+str(backtesttool.calculatMDD(bestret_series)))
-    
 #########################################
-#5.5 價格通道
+#價格通道
 ###########################################
-#價格通道就是過去一段時間的最高價和最低價組成的通道線
 #當最高價創新高的時候做多,最低價創新低的時候做空
 def createSignalPriceChannel(
         df,period):
@@ -433,22 +327,10 @@ def OptimizePriceChannel(
             
     return bestret,bestret_series,(best_period)
 
-if(target=='PriceChannel'):
-    #最佳化period
-    range_period=numpy.arange(2,1000,1,dtype=int)
-    bestret,bestret_series,parameters=OptimizePriceChannel(
-        df_MXFR1,
-        range_period
-        )
-    print('PriceChannel bestret:'+str(bestret))
-    print('PriceChannel MDD:'+str(backtesttool.calculatMDD(bestret_series)))
-    
 #########################################
-#5.6. 網格交易策略
+#網格交易策略
 ###########################################
-
 #根據乖離率低買高賣的策略
-#在加密貨幣試過現成的網格交易機器人,感覺滿有意思的,所以寫了自己的版本
 def createGridSignal(df,
                      BiasUpperLimit,
                      UpperLimitPosition,
@@ -522,116 +404,191 @@ def OptimizeGrid(
             
     return bestret,bestret_series,\
         (best_BiasUpper,best_UpperPosition,best_BiasLower,best_LowerPosition,best_period)
-
-if(target=='Grid'):
-    import yfinance as yf    
-    tw = yf.Ticker("0052.tw")
-    TW_hist = tw.history(period="5y")
-    us = yf.Ticker("00662.tw")
-    US_hist = us.history(period="5y")
-    #兩邊歷史資料長度不一樣,取交集
-    idx = numpy.intersect1d(TW_hist.index, US_hist.index)
-    TW_hist = TW_hist.loc[idx]
-    US_hist = US_hist.loc[idx]
-   
-    
-    TW_open=TW_hist['Open']
-    TW_close=TW_hist['Close']
-    TW_high=TW_hist['High']
-    TW_low=TW_hist['Low']
-    
-    US_open=US_hist['Open']
-    US_close=US_hist['Close']
-    US_high=US_hist['High']
-    US_low=US_hist['Low']
-    
-    kbars = pd.DataFrame(\
-        {'ts':TW_close.index\
-        ,'Close':TW_close/US_close\
-        ,'Open':TW_open/US_open\
-        ,'High':TW_high/US_low\
-        ,'Low':TW_low/US_high}).dropna() 
-    #最佳化 BiasUpper,BiasLower,period
-    range_BiasUpper=numpy.arange(1.0,2.0,0.1,dtype=float)
-    range_UpperPosition=numpy.arange(0.1,0.2,0.1,dtype=float)        
-    range_BiasLower=numpy.arange(0.5,1.0,0.1,dtype=float)
-    range_LowerPosition=numpy.arange(0.9,1.0,0.1,dtype=float)
-    range_period=numpy.arange(2,100,1,dtype=int)
-    bestret,bestret_series,parameters=OptimizeGrid(
-        kbars,
-        range_BiasUpper,
-        range_UpperPosition,
-        range_BiasLower,
-        range_LowerPosition,
-        range_period
-        )
-    (best_BiasUpper,\
-     best_UpperPosition,\
-     best_BiasLower,\
-     best_LowerPosition,\
-     best_period)=parameters
-    
-    #最佳化 range_UpperPosition,range_LowerPosition,range_period
-    range_BiasUpper=numpy.arange(best_BiasUpper,best_BiasUpper+0.1,0.1,dtype=float)
-    range_UpperPosition=numpy.arange(0.1,0.5,0.1,dtype=float)        
-    range_BiasLower=numpy.arange(best_BiasLower,best_BiasLower+0.1,0.1,dtype=float)
-    range_LowerPosition=numpy.arange(0.5,1.0,0.1,dtype=float)
-    range_period=numpy.arange(2,100,1,dtype=int)
-    bestret,bestret_series,parameters=OptimizeGrid(
-        kbars,
-        range_BiasUpper,
-        range_UpperPosition,
-        range_BiasLower,
-        range_LowerPosition,
-        range_period
-        )
-    (best_BiasUpper,\
-     best_UpperPosition,\
-     best_BiasLower,\
-     best_LowerPosition,\
-     best_period)=parameters
+if __name__ == '__main__':
+    #從資料庫讀取小型台指歷史資料
+    df_MXFR1=kbars.readKbarsFromDB('MXFR1')
+    df_MXFR1=kbars.resampleKbars(df_MXFR1,period='1h')
+    close=df_MXFR1['Close']
+    high=df_MXFR1['High']
+    low=df_MXFR1['Low']
+    #選項:
+    #'MACD'
+    #'KD'
+    #'RSI'
+    #'BBAND'
+    #'PriceChannel'
+    #'Grid'
+    target='PriceChannel'
+    if(target=='MACD'):
+        #最佳化Fast,Slow,Signal
+        rangeFast=numpy.arange(2,100,1,dtype=int)
+        rangeSlow=numpy.arange(2,100,1,dtype=int)
+        rangeSignal=numpy.arange(2,100,1,dtype=int)
+        bestret,bestret_series,parameters=OptimizeMACD(
+                df_MXFR1,
+                rangeFast,#=numpy.arange(2,100,1,dtype=int)
+                rangeSlow,#=numpy.arange(2,100,1,dtype=int)
+                rangeSignal#=numpy.arange(2,100,1,dtype=int)
+                )
+        print('MACD bestret:'+str(bestret))
+        print('MACD MDD:'+str(backtesttool.calculatMDD(bestret_series)))
+    if(target=='KD'):
+        #最佳化fastk,slowk,slowd
+        range_fastk=numpy.arange(2,100,1,dtype=int)
+        range_slowk=numpy.arange(2,100,1,dtype=int)
+        range_slowd=numpy.arange(2,100,1,dtype=int)
+        bestret,bestret_series,parameters=OptimizeKD(
+            df_MXFR1,
+            range_fastk,
+            range_slowk,
+            range_slowd
+            )
+        print('KD bestret:'+str(bestret))
+        print('KD MDD:'+str(backtesttool.calculatMDD(bestret_series)))        
+    if(target=='RSI'):
+        #最佳化period,longTH,shortTH
+        range_period=numpy.arange(2,100,1,dtype=int)
+        range_longTH=numpy.arange(0,100,1,dtype=int)
+        range_shortTH=numpy.arange(0,100,1,dtype=int)
+        bestret,bestret_series,parameters=OptimizeRSI(
+            df_MXFR1,
+            range_period,
+            range_longTH,
+            range_shortTH
+            )
+        print('RSI bestret:'+str(bestret))
+        print('RSI MDD:'+str(backtesttool.calculatMDD(bestret_series)))        
+    if(target=='BBAND'):
+        #最佳化period,SmallStdDev,LargeStdDev
+        range_period=numpy.arange(2,100,1,dtype=int)
+        range_SmallStdDev=numpy.arange(0.5,5,0.5,dtype=float)
+        range_LargeStdDev=numpy.arange(0.5,5,0.5,dtype=float)
+        bestret,bestret_series,parameters=OptimizeBBAND(
+            df_MXFR1,
+            range_period,
+            range_SmallStdDev,
+            range_LargeStdDev
+            )
+        print('BBAND bestret:'+str(bestret))
+        print('BBAND MDD:'+str(backtesttool.calculatMDD(bestret_series)))        
+    if(target=='PriceChannel'):
+        #最佳化period
+        range_period=numpy.arange(2,1000,1,dtype=int)
+        bestret,bestret_series,parameters=OptimizePriceChannel(
+            df_MXFR1,
+            range_period
+            )
+        print('PriceChannel bestret:'+str(bestret))
+        print('PriceChannel MDD:'+str(backtesttool.calculatMDD(bestret_series)))        
+    if(target=='Grid'):
+        import yfinance as yf    
+        tw = yf.Ticker("0052.tw")
+        TW_hist = tw.history(period="5y")
+        us = yf.Ticker("00662.tw")
+        US_hist = us.history(period="5y")
+        #兩邊歷史資料長度不一樣,取交集
+        idx = numpy.intersect1d(TW_hist.index, US_hist.index)
+        TW_hist = TW_hist.loc[idx]
+        US_hist = US_hist.loc[idx]
+       
         
-    
-    #最佳化 BiasUpper,BiasLower,range_period
-    range_BiasUpper=numpy.arange(1.0,2.0,0.1,dtype=float)
-    range_UpperPosition=numpy.arange(best_UpperPosition,best_UpperPosition+0.1,0.1,dtype=float)        
-    range_BiasLower=numpy.arange(0.5,1.0,0.1,dtype=float)
-    range_LowerPosition=numpy.arange(best_LowerPosition,best_LowerPosition+0.1,0.1,dtype=float)
-    range_period=numpy.arange(2,100,1,dtype=int)
-    bestret,bestret_series,parameters=OptimizeGrid(
-        kbars,
-        range_BiasUpper,
-        range_UpperPosition,
-        range_BiasLower,
-        range_LowerPosition,
-        range_period
-        )
-    
-    
-    ### 跨市網格交易報酬計算 ###    
-    (best_BiasUpper\
-    ,best_UpperPosition\
-    ,best_BiasLower\
-    ,best_LowerPosition\
-    ,best_period)=parameters
-    
-    position=createGridSignal(kbars,
-                     best_BiasUpper,
-                     best_UpperPosition,
-                     best_BiasLower,
-                     best_LowerPosition,
-                     best_period)
-    buyTW=position
-    buyUS=1.0-position
-    
-    retTW,retseriesTW=backtesttool.backtest_signal(TW_open,buyTW,spread=0.0000176)
-    retUS,retseriesUS=backtesttool.backtest_signal(US_open,buyUS,spread=0.0000176)
-    retseries=(retseriesTW-1.0)+(retseriesUS-1.0)+1.0
-    prefixProfit=backtesttool.prefixProd(retseries)
-    #plt.plot(buyTW,color='red')
-    print('strategyMDD:',backtesttool.calculatMDD(retseries))
-    print('USMDD:',backtesttool.calculatMDD_fromClose(US_close))
-    print('TWMDD:',backtesttool.calculatMDD_fromClose(TW_close))
-    print('strategyProfit:',prefixProfit.tolist()[-1]/prefixProfit.tolist()[0])
-    print('USProfit:',US_close.tolist()[-1]/US_close.tolist()[0])
-    print('TWProfit:',TW_close.tolist()[-1]/TW_close.tolist()[0])
+        TW_open=TW_hist['Open']
+        TW_close=TW_hist['Close']
+        TW_high=TW_hist['High']
+        TW_low=TW_hist['Low']
+        
+        US_open=US_hist['Open']
+        US_close=US_hist['Close']
+        US_high=US_hist['High']
+        US_low=US_hist['Low']
+        
+        kbars = pd.DataFrame(\
+            {'ts':TW_close.index\
+            ,'Close':TW_close/US_close\
+            ,'Open':TW_open/US_open\
+            ,'High':TW_high/US_low\
+            ,'Low':TW_low/US_high}).dropna() 
+        #最佳化 BiasUpper,BiasLower,period
+        range_BiasUpper=numpy.arange(1.0,2.0,0.1,dtype=float)
+        range_UpperPosition=numpy.arange(0.1,0.2,0.1,dtype=float)        
+        range_BiasLower=numpy.arange(0.5,1.0,0.1,dtype=float)
+        range_LowerPosition=numpy.arange(0.9,1.0,0.1,dtype=float)
+        range_period=numpy.arange(2,100,1,dtype=int)
+        bestret,bestret_series,parameters=OptimizeGrid(
+            kbars,
+            range_BiasUpper,
+            range_UpperPosition,
+            range_BiasLower,
+            range_LowerPosition,
+            range_period
+            )
+        (best_BiasUpper,\
+         best_UpperPosition,\
+         best_BiasLower,\
+         best_LowerPosition,\
+         best_period)=parameters
+        
+        #最佳化 range_UpperPosition,range_LowerPosition,range_period
+        range_BiasUpper=numpy.arange(best_BiasUpper,best_BiasUpper+0.1,0.1,dtype=float)
+        range_UpperPosition=numpy.arange(0.1,0.5,0.1,dtype=float)        
+        range_BiasLower=numpy.arange(best_BiasLower,best_BiasLower+0.1,0.1,dtype=float)
+        range_LowerPosition=numpy.arange(0.5,1.0,0.1,dtype=float)
+        range_period=numpy.arange(2,100,1,dtype=int)
+        bestret,bestret_series,parameters=OptimizeGrid(
+            kbars,
+            range_BiasUpper,
+            range_UpperPosition,
+            range_BiasLower,
+            range_LowerPosition,
+            range_period
+            )
+        (best_BiasUpper,\
+         best_UpperPosition,\
+         best_BiasLower,\
+         best_LowerPosition,\
+         best_period)=parameters
+            
+        
+        #最佳化 BiasUpper,BiasLower,range_period
+        range_BiasUpper=numpy.arange(1.0,2.0,0.1,dtype=float)
+        range_UpperPosition=numpy.arange(best_UpperPosition,best_UpperPosition+0.1,0.1,dtype=float)        
+        range_BiasLower=numpy.arange(0.5,1.0,0.1,dtype=float)
+        range_LowerPosition=numpy.arange(best_LowerPosition,best_LowerPosition+0.1,0.1,dtype=float)
+        range_period=numpy.arange(2,100,1,dtype=int)
+        bestret,bestret_series,parameters=OptimizeGrid(
+            kbars,
+            range_BiasUpper,
+            range_UpperPosition,
+            range_BiasLower,
+            range_LowerPosition,
+            range_period
+            )
+        
+        
+        ### 跨市網格交易報酬計算 ###    
+        (best_BiasUpper\
+        ,best_UpperPosition\
+        ,best_BiasLower\
+        ,best_LowerPosition\
+        ,best_period)=parameters
+        
+        position=createGridSignal(kbars,
+                         best_BiasUpper,
+                         best_UpperPosition,
+                         best_BiasLower,
+                         best_LowerPosition,
+                         best_period)
+        buyTW=position
+        buyUS=1.0-position
+        
+        retTW,retseriesTW=backtesttool.backtest_signal(TW_open,buyTW,spread=0.0000176)
+        retUS,retseriesUS=backtesttool.backtest_signal(US_open,buyUS,spread=0.0000176)
+        retseries=(retseriesTW-1.0)+(retseriesUS-1.0)+1.0
+        prefixProfit=backtesttool.prefixProd(retseries)
+        #plt.plot(buyTW,color='red')
+        print('strategyMDD:',backtesttool.calculatMDD(retseries))
+        print('USMDD:',backtesttool.calculatMDD_fromClose(US_close))
+        print('TWMDD:',backtesttool.calculatMDD_fromClose(TW_close))
+        print('strategyProfit:',prefixProfit.tolist()[-1]/prefixProfit.tolist()[0])
+        print('USProfit:',US_close.tolist()[-1]/US_close.tolist()[0])
+        print('TWProfit:',TW_close.tolist()[-1]/TW_close.tolist()[0])

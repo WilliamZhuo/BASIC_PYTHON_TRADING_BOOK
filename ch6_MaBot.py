@@ -28,17 +28,13 @@ contractName='PUF'
 ContractCount=1 #口數
 contractObj=kbars.getFrontMonthContract(api,contractName)
 contractCode=contractObj.code
-futurePrice=0
 logging.basicConfig(filename='MAbotlog.log', level=logging.DEBUG)
 
 def MABotBody():
     class MABot:
         parameters={'PeriodShort':160,\
              'PeriodLong':274}
-
-        def __init__(self):
-            #要用均線交易股票的話,Futures改成Stocks
-            self.contract = contractObj
+        contract = contractObj    
     
     #########################################
     #6.1 計算策略目標部位
@@ -170,7 +166,7 @@ def MABotBody():
                 ####################################
                 #3.更新目標部位
                 ##############################
-                self.calculateSharetarget(price=futurePrice)
+                self.calculateSharetarget(price=self.futurePrice)
                 #######################################
                 #4.掛單
                 ############################################                
@@ -222,7 +218,7 @@ def MABotBody():
                 #產生買單物件
                 if(quantityTrade>0):
                     order = api.Order(
-                        price=futureBid,
+                        price=self.futureBid,
                         quantity=quantityTrade,
                         action=shioaji.constant.Action.Buy,
                 		price_type=shioaji.constant.StockPriceType.MKP,
@@ -236,7 +232,7 @@ def MABotBody():
                 #產生賣單物件
                 else:
                     order = api.Order(
-                        price=futureAsk,
+                        price=self.futureAsk,
                         quantity=abs(quantityTrade),
                         action=shioaji.constant.Action.Sell,
                 		price_type=shioaji.constant.StockPriceType.MKP,
@@ -307,66 +303,66 @@ def MABotBody():
     api.quote.set_event_callback(event_callback)
     
     
-    #用來執行交易機器人的函數        
-    def jobs_per1min():
-        global futurePrice
-        while(1):
-            current_time = time.time()
-            cooldown=60
-            time_to_sleep = cooldown - (current_time % cooldown)
-            time.sleep(time_to_sleep)
-            
-            now = datetime.datetime.now()
-            hour=now.hour
-            minute=now.minute
-            second=now.second
+    #用來更新買賣訊號和下單的迴圈        
+    while(1):
+        current_time = time.time()
+        cooldown=60
+        time_to_sleep = cooldown - (current_time % cooldown)
+        time.sleep(time_to_sleep)
+        
+        now = datetime.datetime.now()
+        hour=now.hour
+        minute=now.minute
+        second=now.second
+        cond_continue=False
+        #以下是用小時線交易
+        #只在整點零分時交易
+        if(minute>0):
+            cond_continue=True
+        #日盤開盤特例
+        if(minute==45) and(hour==8):
             cond_continue=False
-            #以下是用小時線交易
-            #只在整點零分時交易
-            if(minute>0):
+            
+        #夜盤開盤特例,其實不加這個也沒差,但這樣看起來比較對稱
+        if(minute==0) and (hour==15):
+            cond_continue=False
+        
+        if(not ENABLE_TRADING_NIGHT):
+            if(hour>13 or hour<8):
                 cond_continue=True
-            #日盤開盤特例
-            if(minute==45) and(hour==8):
-                cond_continue=False
-                
-            #夜盤開盤特例,其實不加這個也沒差,但這樣看起來比較對稱
-            if(minute==0) and (hour==15):
-                cond_continue=False
+        
+        #夜盤收盤特取消掛單
+        if(minute==0) and (hour==5):
+            try:
+                bot1.cancelOrders()
+            except Exception as e:
+                logging.error('jobs_per1min  Error Message A: '+ str(e))
+            break
             
-            if(not ENABLE_TRADING_NIGHT):
-                if(hour>13 or hour<8):
-                    cond_continue=True
-            
-            #夜盤收盤特取消掛單
-            if(minute==0) and (hour==5):
-                try:
-                    bot1.cancelOrders()
-                except Exception as e:
-                    logging.error('jobs_per1min  Error Message A: '+ str(e))
-                break
-                
-            #日盤收盤取消掛單
-            if(hour==13 and minute==30):
-                try:
-                    bot1.cancelOrders()
-                except Exception as e:
-                    logging.error('jobs_per1min  Error Message A: '+ str(e))
-                continue
-            
-            if(cond_continue):
-                continue
-            
-            #處理成交價不在買賣價中間的狀況
-            mutexPrice.acquire()
-            mutexBidAsk.acquire()
-            if(futurePrice>futureAsk) or (futurePrice<futureBid):
-                futurePrice=(futureAsk+futureBid)/2
-            mutexPrice.release()
-            mutexBidAsk.release() 
-            #更新買賣單
-            bot1.updateOrder()
-            
-    jobs_per1min()
+        #日盤收盤取消掛單
+        if(hour==13 and minute==30):
+            try:
+                bot1.cancelOrders()
+            except Exception as e:
+                logging.error('jobs_per1min  Error Message A: '+ str(e))
+            continue
+        
+        if(cond_continue):
+            continue
+        
+        #處理成交價不在買賣價中間的狀況
+        mutexPrice.acquire()
+        mutexBidAsk.acquire()
+        if(futurePrice>futureAsk) or (futurePrice<futureBid):
+            futurePrice=(futureAsk+futureBid)/2
+        bot1.futurePrice=futurePrice
+        bot1.futureBid=futureBid
+        bot1.futureAsk=futureAsk
+        mutexPrice.release()
+        mutexBidAsk.release()
+        #更新買賣單
+        bot1.updateOrder()
+
 
 MABotBody()
 import datetime

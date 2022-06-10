@@ -14,6 +14,9 @@ import os
 import logging
 import pickle
 import datetime
+import threading, time
+from threading import Thread, Lock
+
 REBOOT_HOUR=16
 END_WEEKDAY=4 # Friday
 api=shioajiLogin(simulation=False)
@@ -41,6 +44,9 @@ def GridbotBody():
         month=0
         day=0
         
+        stockPrice={}
+        stockBid={}
+        stockAsk={}        
         upperprice=0
         uppershare=0
         lowerprice=0
@@ -48,12 +54,8 @@ def GridbotBody():
         uppershareTarget=0
         lowershareTarget=0
         money=0
-        def __init__(self,uppershare=0,lowershare=0,money=10000):
-            self.money=money
-            self.uppershare=uppershare
-            self.lowershare=lowershare
-            self.contractUpper = api.Contracts.Stocks[self.upperid]
-            self.contractLower = api.Contracts.Stocks[self.lowerid]
+        contractUpper = api.Contracts.Stocks[upperid]
+        contractLower = api.Contracts.Stocks[lowerid]
             
     #########################################
     #7.1 計算策略目標部位(百分比)
@@ -166,8 +168,8 @@ def GridbotBody():
                 ####################################
                 #3.更新目標部位
                 ##############################
-                self.calculateSharetarget(upperprice=stockPrice[g_upperid]\
-                                          ,lowerprice=stockPrice[g_lowerid])
+                self.calculateSharetarget(upperprice=self.stockPrice[g_upperid]\
+                                          ,lowerprice=self.stockPrice[g_lowerid])
                 #######################################
                 #4.掛單
                 ############################################                
@@ -229,16 +231,16 @@ def GridbotBody():
             code=self.upperid
             money=self.money
             if(quantityUpper>0):
-                cost=stockBid[code]*quantityUpper
+                cost=self.stockBid[code]*quantityUpper
                 if(money<cost):
-                    quantityUpper=max(int(money/stockBid[code]),0)
+                    quantityUpper=max(int(money/self.stockBid[code]),0)
             quantityUpperValid=abs(quantityUpper)>0
             #這邊做掛單,前面做了掛單量==0股的特殊檢查
             if(quantityUpperValid):
                 #產生買單物件
                 if(quantityUpper>0):
                     order = api.Order(
-                        price=stockBid[code],
+                        price=self.stockBid[code],
                         quantity=quantityUpper,
                         action=shioaji.constant.Action.Buy,
                         price_type=shioaji.constant.StockPriceType.LMT,
@@ -249,7 +251,7 @@ def GridbotBody():
                 #產生賣單物件
                 else:
                     order = api.Order(
-                        price=stockAsk[code],
+                        price=self.stockAsk[code],
                         quantity=abs(quantityUpper),
                         action=shioaji.constant.Action.Sell,
                         price_type=shioaji.constant.StockPriceType.LMT,
@@ -258,9 +260,9 @@ def GridbotBody():
                         account=api.stock_account,
                     )
                 #在交易金額大於trigger的時候掛單
-                if(abs(quantityUpper)*stockPrice[code]>=trigger):    
+                if(abs(quantityUpper)*self.stockPrice[code]>=trigger):    
                     contract = api.Contracts.Stocks[code]
-                    cost=stockBid[code]*quantityUpper
+                    cost=self.stockBid[code]*quantityUpper
                     #掛買單的話,要把交割款扣掉買單的金額
                     #避免後面掛分母的單的時候交割款不夠
                     if(quantityUpper>0):
@@ -279,16 +281,16 @@ def GridbotBody():
             #首先確保掛單的量不會把交割款用完
             code=self.lowerid
             if(quantityLower>0):
-                cost=stockBid[code]*quantityLower
+                cost=self.stockBid[code]*quantityLower
                 if(money<cost):
-                    quantityLower=max(int(money/stockBid[code]),0)
+                    quantityLower=max(int(money/self.stockBid[code]),0)
             quantityLowerValid=abs(quantityLower)>0
             #這邊做掛單,前面做了掛單量==0股的特殊檢查
             if(self.lowerid!='Cash' and quantityLowerValid):
                 #產生買單物件
                 if(quantityLower>0):
                     order = api.Order(
-                        price=stockBid[code],
+                        price=self.stockBid[code],
                         quantity=quantityLower,
                         action=shioaji.constant.Action.Buy,
                         price_type=shioaji.constant.StockPriceType.LMT,
@@ -299,7 +301,7 @@ def GridbotBody():
                 #產生賣單物件
                 else:
                     order = api.Order(
-                        price=stockAsk[code],
+                        price=self.stockAsk[code],
                         quantity=-quantityLower,
                         action=shioaji.constant.Action.Sell,
                         price_type=shioaji.constant.StockPriceType.LMT,
@@ -308,9 +310,9 @@ def GridbotBody():
                         account=api.stock_account,
                     )
                 #在交易金額大於trigger的時候掛單
-                if(abs(quantityLower)*stockPrice[code]>=trigger):    
+                if(abs(quantityLower)*self.stockPrice[code]>=trigger):    
                     contract = api.Contracts.Stocks[code]
-                    cost=stockBid[code]*quantityLower
+                    cost=self.stockBid[code]*quantityLower
                     if(quantityLower>0):
                         trade = api.place_order(contract, order)
                         s=str(datetime.datetime.now())
@@ -336,7 +338,7 @@ def GridbotBody():
               g_lowerid:snaprice[g_lowerid][0]['close']}
     
     #創建交易機器人物件
-    bot1=GridBot(uppershare=0,lowershare=0,money=0)
+    bot1=GridBot()
     #更新交易機器人裡的股票數量
     bot1.getPositions()
     
@@ -367,13 +369,9 @@ def GridbotBody():
             initmoney=initmoney+int(amount)
     bot1.money=initmoney
     
-    import threading, time
-    from threading import Thread, Lock
-    
     #用來處理多線程的變數,在更新價格和訂單成交回報時會用到
     mutexDict ={g_upperid:Lock(),g_lowerid:Lock()}
-    mutexBidAskDict ={g_upperid:Lock(),g_lowerid:Lock()}
-    
+    mutexBidAskDict ={g_upperid:Lock(),g_lowerid:Lock()}    
     mutexmsg =Lock()
     mutexstat =Lock()
     mutexgSettle =Lock()
@@ -403,7 +401,7 @@ def GridbotBody():
             msglist.append(msg)
         except Exception as e: # work on python 3.x
             logging.error('place_cb  Error Message A: '+ str(e))
-        mutexmsg.release()    
+        mutexmsg.release()
         mutexstat.acquire()
         try:
             statlist.append(stat)
@@ -460,9 +458,9 @@ def GridbotBody():
     @api.on_bidask_stk_v1()
     def STK_BidAsk_callback(exchange: Exchange, bidask:BidAskSTKv1):
         code=bidask['code']
-        mutexBidAskDict[code].acquire()            
+        mutexBidAskDict[code].acquire()
         bidlist=[float(i) for i in bidask['bid_price']]
-        asklist=[float(i) for i in bidask['ask_price']]    
+        asklist=[float(i) for i in bidask['ask_price']]
         stockBid[code]=bidlist[0]
         stockAsk[code]=asklist[0]
         mutexBidAskDict[code].release()
@@ -476,52 +474,55 @@ def GridbotBody():
         #print(f'Event code: {event_code} | Event: {event}')
     api.quote.set_event_callback(event_callback)
     
-    #用來執行交易機器人的函數        
-    def jobs_per1min():
-        while(1):
-            current_time = time.time()
-            cooldown=60
-            time_to_sleep = cooldown - (current_time % cooldown)
-            time.sleep(time_to_sleep)
+    #用來更新買賣訊號和下單的迴圈        
+    while(1):
+        current_time = time.time()
+        cooldown=60
+        time_to_sleep = cooldown - (current_time % cooldown)
+        time.sleep(time_to_sleep)
+        
+        now = datetime.datetime.now()
+        hour=now.hour
+        minute=now.minute
+        second=now.second
+        if(minute%3==0 and second>=30):
+            continue
+        if(minute%3==1 and second<=30):
+            continue
+        if(hour==13 and minute>20):
+            try:
+                bot1.cancelOrders()
+            except Exception as e:
+                logging.error('jobs_per1min  Error Message A: '+ str(e))
+            continue
+        if(hour>=14 and hour<=15):
+            pickle_dump( "money.p",bot1.money)
+            break
+        if(not ENABLE_PREMARKET):
+            if(hour<9 or (hour>13)):
+                continue
             
-            now = datetime.datetime.now()
-            hour=now.hour
-            minute=now.minute
-            second=now.second
-            if(minute%3==0 and second>=30):
-                continue
-            if(minute%3==1 and second<=30):
-                continue
-            if(hour==13 and minute>20):
-                try:
-                    bot1.cancelOrders()
-                except Exception as e:
-                    logging.error('jobs_per1min  Error Message A: '+ str(e))
-                continue
-            if(hour>=14 and hour<=15):
-                pickle_dump( "money.p",bot1.money)
-                break
-            if(not ENABLE_PREMARKET):
-                if(hour<9 or (hour>13)):
-                    continue
-                
-            #處理成交價不在買賣價中間的狀況
-            mutexDict[g_upperid].acquire()
-            mutexDict[g_lowerid].acquire()
-            mutexBidAskDict[g_upperid].acquire()
-            mutexBidAskDict[g_lowerid].acquire()
-            if(stockPrice[g_upperid]>stockAsk[g_upperid] or stockPrice[g_upperid]<stockBid[g_upperid]):
-                stockPrice[g_upperid]=(stockAsk[g_upperid]+stockBid[g_upperid])/2
-            if(stockPrice[g_lowerid]>stockAsk[g_lowerid] or stockPrice[g_lowerid]<stockBid[g_lowerid]):
-                stockPrice[g_lowerid]=(stockAsk[g_lowerid]+stockBid[g_lowerid])/2
-            mutexDict[g_lowerid].release()
-            mutexDict[g_upperid].release()
-            mutexBidAskDict[g_lowerid].release()
-            mutexBidAskDict[g_upperid].release()   
-            #更新買賣單
-            bot1.updateOrder()
-            
-    jobs_per1min()
+        #處理成交價不在買賣價中間的狀況
+        mutexDict[g_upperid].acquire()
+        mutexDict[g_lowerid].acquire()
+        mutexBidAskDict[g_upperid].acquire()
+        mutexBidAskDict[g_lowerid].acquire()
+        if(stockPrice[g_upperid]>stockAsk[g_upperid] or stockPrice[g_upperid]<stockBid[g_upperid]):
+            stockPrice[g_upperid]=(stockAsk[g_upperid]+stockBid[g_upperid])/2
+        if(stockPrice[g_lowerid]>stockAsk[g_lowerid] or stockPrice[g_lowerid]<stockBid[g_lowerid]):
+            stockPrice[g_lowerid]=(stockAsk[g_lowerid]+stockBid[g_lowerid])/2
+        bot1.stockPrice[g_upperid]=stockPrice[g_upperid]
+        bot1.stockPrice[g_lowerid]=stockPrice[g_lowerid]
+        bot1.stockBid[g_upperid]=stockBid[g_upperid]
+        bot1.stockBid[g_lowerid]=stockBid[g_lowerid]
+        bot1.stockAsk[g_upperid]=stockAsk[g_upperid]
+        bot1.stockAsk[g_lowerid]=stockAsk[g_lowerid]
+        mutexDict[g_lowerid].release()
+        mutexDict[g_upperid].release()
+        mutexBidAskDict[g_lowerid].release()
+        mutexBidAskDict[g_upperid].release()   
+        #更新買賣單
+        bot1.updateOrder()
 
 GridbotBody()
 import datetime

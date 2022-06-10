@@ -287,10 +287,15 @@ def backFillKbars(
         #create table
         kbars.to_sql(name=contractName,con= conn, if_exists='replace', index=True) 
     conn.close()
+
+contract_MXFR1 = getContract(api,name='MXFR1',the_type='future')
+contract_FXFR1 = getContract(api,name='FXFR1',the_type='future')
 backFillKbars(api=api
               ,contractObj=contract_MXFR1
               ,contractName='MXFR1')
-
+backFillKbars(api=api
+              ,contractObj=contract_FXFR1
+              ,contractName='FXFR1')
 
 def backFillTicks(
         api
