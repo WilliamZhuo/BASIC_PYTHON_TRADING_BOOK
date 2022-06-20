@@ -26,8 +26,23 @@ def getContract(
 def getFrontMonthContract(
         api
         ,futureID#='UDF'
-        ):
+        ,removeR1R2=False #回傳物件要用來抓報價的時候設False,物件要用來下單的時候設True
+        ,daysSwitch=7):
     l=list(api.Contracts.Futures[futureID])
+    #移除近月和次月,近月次月只能抓報價無法下單
+    if(removeR1R2):
+        for i in range(len(l)-1,-1,-1):
+            #近月和次月
+            if(l[i].code[3]=='R'):
+                l.pop(i)
+            else:
+                #移除即將結算的合約,或者已結算的合約
+                delivery_date=datetime.datetime.strptime(
+                    l[i].delivery_date,'%Y/%m/%d').date()
+                today=get_today()
+                diffdays=(delivery_date-today).days
+                if(diffdays<=max(daysSwitch,0)):
+                    l.pop(i)
     len_l=len(l)
     min_delivery_month='99999999999'
     min_i=0

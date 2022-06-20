@@ -21,7 +21,7 @@ from threading import Thread, Lock
 END_WEEKDAY=5 # Saturday
 REBOOT_HOUR=6
 ENABLE_TRADING_NIGHT=False
-ENABLE_SEND_ORDER=False
+ENABLE_SEND_ORDER=True
 ENABLE_SHORT=False
 api=shioajiLogin(simulation=False)
 contractName='PUF'
@@ -35,6 +35,7 @@ def MABotBody():
         parameters={'PeriodShort':160,\
              'PeriodLong':274}
         contract = contractObj    
+        contractName = contractName    
     
     #########################################
     #6.1 計算策略目標部位
@@ -212,7 +213,8 @@ def MABotBody():
             quantityTrade=self.shareTarget-self.netvolume  
             #確保掛單的量不會把交割款用完
             quantityTradeValid=abs(quantityTrade)>0
-            thecontract=self.contract
+            thecontract=kbars.getFrontMonthContract(
+                api,self.contractName,True)
             #這邊做掛單,前面做了掛單量==0股的特殊檢查
             if(quantityTradeValid):
                 #產生買單物件
@@ -221,8 +223,8 @@ def MABotBody():
                         price=self.futureBid,
                         quantity=quantityTrade,
                         action=shioaji.constant.Action.Buy,
-                		price_type=shioaji.constant.StockPriceType.MKP,
-                		order_type=shioaji.constant.TFTOrderType.ROD,   
+                		price_type=shioaji.constant.FuturesPriceType.MKP,
+                		order_type=shioaji.constant.TFTOrderType.IOC,   
                 		octype = shioaji.constant.FuturesOCType.Auto,
                 		account=api.futopt_account,
                     )    
@@ -235,8 +237,8 @@ def MABotBody():
                         price=self.futureAsk,
                         quantity=abs(quantityTrade),
                         action=shioaji.constant.Action.Sell,
-                		price_type=shioaji.constant.StockPriceType.MKP,
-                		order_type=shioaji.constant.TFTOrderType.ROD,     
+                		price_type=shioaji.constant.FuturesPriceType.MKP,
+                		order_type=shioaji.constant.TFTOrderType.IOC,     
                 		octype = shioaji.constant.FuturesOCType.Auto,
                 		account=api.futopt_account,
                     )
@@ -327,8 +329,19 @@ def MABotBody():
         if(minute==0) and (hour==15):
             cond_continue=False
         
+        #收盤時間
+        if(hour>=5 and hour <8 ):
+            cond_continue=True
+        if(hour ==8  and minute<45):
+            cond_continue=True
+        if(hour==14):
+            cond_continue=True
+        if(hour ==13  and minute>45):
+            cond_continue=True
+            
+        #夜盤交易時間
         if(not ENABLE_TRADING_NIGHT):
-            if(hour>13 or hour<8):
+            if(hour>=15 or hour<=5):
                 cond_continue=True
         
         #夜盤收盤特取消掛單
