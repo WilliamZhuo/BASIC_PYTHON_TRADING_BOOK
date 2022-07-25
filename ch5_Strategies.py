@@ -12,7 +12,6 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy
 import backtesttool
-
 #從資料庫讀取小型台指歷史資料
 df_MXFR1=kbars.readKbarsFromDB('MXFR1')
 df_MXFR1=kbars.resampleKbars(df_MXFR1,period='1h')
@@ -26,7 +25,7 @@ low=df_MXFR1['Low']
 #'BBAND'
 #'PriceChannel'
 #'Grid'
-target='PriceChannel'
+target='RSI'
 
 #########################################
 #5.1 MACD指標
@@ -39,6 +38,22 @@ macd, macdsignal, macdhist =talib.MACD(close
            ,fastperiod=12 
            ,slowperiod=26 
            ,signalperiod=9)
+
+if(target=='MACD'):
+    ma_short=talib.EMA(close,12)
+    ma_long=talib.EMA(close,26)
+    plt.title('EMA(12)-EMA(26)')
+    plt.plot((ma_short-ma_long)[-100:-1],color='green')
+    plt.show()
+    plt.title('macd')
+    plt.plot(macd[-100:-1],color='green')
+    plt.show()
+    plt.title('macd-macdsignal')
+    plt.plot((macd-macdsignal)[-100:-1],color='green')
+    plt.show()
+    plt.title('macdhist')
+    plt.plot(macdhist[-100:-1],color='green')
+    plt.show()
 #使用快慢線交叉當作買賣訊號
 def createSignalMACD(close,
                  periodFast,
@@ -76,9 +91,9 @@ def OptimizeMACD(
     for periodFast in rangeFast:
         for periodSlow in rangeSlow:
             for periodSignal in rangeSignal:
-                print("periodFast:"+str(periodFast))
-                print("periodSlow:"+str(periodSlow))
-                print("periodSignal:"+str(periodSignal))
+				print("periodFast:"+str(periodFast))
+				print("periodSlow:"+str(periodSlow))
+				print("periodSignal:"+str(periodSignal))
                 #錯誤檢查,快線週期要比慢線短
                 if(periodFast>=periodSlow):
                     continue
@@ -115,6 +130,11 @@ if(target=='MACD'):
     print('MACD bestret:'+str(bestret))
     print('MACD MDD:'+str(backtesttool.calculatMDD(bestret_series)))
     
+    plt.plot(numpy.log10(
+        backtesttool.prefixProd(bestret_series))
+        ,color='green')
+    plt.title('MACD Profit(log)')
+    plt.show()
 
 #########################################
 #5.2 KD指標
@@ -133,6 +153,26 @@ slowk, slowd = talib.STOCH(high, low, close,
                      slowd_period=3,
                      slowd_matype=talib.MA_Type.SMA
                      )
+
+if(target=='KD'):
+    rollingHigh=high.rolling(5).max()
+    rollingLow=low.rolling(5).min()
+    RSV=(close-rollingLow)/(rollingHigh-rollingLow)
+    plt.plot(talib.SMA(RSV,3)[-100:-1])
+    plt.title('SMA(RSV,3)')
+    plt.show()
+    plt.plot(slowk[-100:-1])
+    plt.title('slowk')
+    plt.show()
+    plt.plot(talib.SMA(slowk,3)[-100:-1])
+    plt.title('SMA(slowk,3)')
+    plt.show()
+    plt.plot(slowd[-100:-1])
+    plt.title('slowd')
+    plt.show()
+    plt.plot((slowk-slowd)[-100:-1])
+    plt.title('KD signal(slowk-slowd)')
+    plt.show()
 #使用KD交叉當作買賣訊號
 def createSignalKD(high,low,close,
                  fastk=5,
@@ -175,9 +215,9 @@ def OptimizeKD(
     for fastk in range_fastk:
         for slowk in range_slowk:
             for slowd in range_slowd:
-                print("fastk:"+str(fastk))
-                print("slowk:"+str(slowk))
-                print("slowd:"+str(slowd))
+				print("fastk:"+str(fastk))
+				print("slowk:"+str(slowk))
+				print("slowd:"+str(slowd))
 
                 #製作買賣訊號
                 BuySignal=createSignalKD(highPrice,lowPrice,closePrice,
@@ -211,18 +251,64 @@ if(target=='KD'):
         )
     print('KD bestret:'+str(bestret))
     print('KD MDD:'+str(backtesttool.calculatMDD(bestret_series)))
-    
+    plt.plot(numpy.log10(
+        backtesttool.prefixProd(bestret_series))
+        ,color='green')
+    plt.title('KD Profit(log)')
+    plt.show()
+
 #########################################
 #5.3 RSI指標
 ###########################################
 #定義為n日內漲幅平均值/(n日內跌幅平均值+n日內漲幅平均值)
 real = talib.RSI(close, timeperiod=14)  
-
+if(target=='RSI'):
+    #計算漲跌幅,並且把漲幅寫到pos,把跌幅寫到neg
+    pos=close.copy()-close.shift(1)
+    neg=close.copy()-close.shift(1)
+    pos[0]=pos[1]
+    neg[0]=neg[1] 
+    pos[pos<0]=0
+    neg[neg>0]=0
+    #轉成絕對值,拿掉正負號
+    pos=pos.abs()
+    neg=neg.abs()
+    #算平均值
+    posSMA=talib.SMA(pos,14)
+    negSMA=talib.SMA(neg,14)
+    RSI=posSMA/((posSMA+negSMA))   
+    plt.plot(RSI[-100:-1]*100)
+    plt.title('RSI(implement with SMA)')
+    plt.show()
+    plt.plot(real[-100:-1])
+    plt.title('real')
+    plt.show()
+    #https://en.wikipedia.org/wiki/Moving_average#Modified_moving_average
+    def SMMA(s_in,period):
+        s_out=s_in.copy()
+        for i in range(1,s_in.size,1):
+            if(i<period):
+                s_out[i]=s_out[i-1]*i/(i+1)+s_in[i]/(i+1)
+            else:
+                s_out[i]=s_out[i-1]*(period-1)/(period)\
+                    +s_in[i]/(period)
+        return s_out
+    posSMMA=SMMA(pos,14)
+    negSMMA=SMMA(neg,14)
+    RSI=posSMMA/((posSMMA+negSMMA))  
+    plt.plot(RSI[-100:-1]*100)
+    plt.title('RSI(SMMA)')
+    plt.show()
+    
+    real2 = talib.RSI(close[-100:-1], timeperiod=14)
+    plt.plot(real[-80:-1],'green')
+    plt.plot(real2[-80:-1],'red')
+    plt.title('original RSI vs RSI with only 100 kbars as input')
+    plt.show()
 #使用RSI往上穿越longTH做多,往下穿越shortTH做空的買賣策略
 #longTH>shortTH,longTH預設值為70,shortTH預設值為30
 def createSignalRSI(close,
-                 timeperiod=14,
-                 longTH=70,
+                 timeperiod=14,          longTH=70,
                  shortTH=30):
     real = talib.RSI(close, timeperiod=timeperiod)  
 
@@ -252,9 +338,9 @@ def OptimizeRSI(
     for period in range_period:
         for longTH in range_longTH:
             for shortTH in range_shortTH:
-                print("period:"+str(period))
-                print("longTH:"+str(longTH))
-                print("shortTH:"+str(shortTH))
+				print("period:"+str(period))
+				print("longTH:"+str(longTH))
+				print("shortTH:"+str(shortTH))
                 if(longTH<=shortTH):
                     continue
                 #製作買賣訊號
@@ -289,7 +375,11 @@ if(target=='RSI'):
         )
     print('RSI bestret:'+str(bestret))
     print('RSI MDD:'+str(backtesttool.calculatMDD(bestret_series)))
-    
+    plt.plot(numpy.log10(
+        backtesttool.prefixProd(bestret_series))
+        ,color='green')
+    plt.title('RSI Profit(log)')
+    plt.show()
 
 #########################################
 #5.4 布林通道
@@ -300,6 +390,35 @@ upperband, middleband, lowerband = \
                  nbdevup=2,
                  nbdevdn=2, 
                  matype=talib.MA_Type.SMA)
+    
+if(target=='BBAND'):    
+    timeperiod=20
+    SmallStdDev=1.0
+    LargeStdDev=2.0
+    upperband_Small, middleband_Small, lowerband_Small = \
+        talib.BBANDS(close, 
+                     timeperiod=timeperiod,
+                     nbdevup=SmallStdDev,
+                     nbdevdn=SmallStdDev, 
+                     matype=talib.MA_Type.SMA)
+    upperband_Large, middleband_Large, lowerband_Large = \
+        talib.BBANDS(close, 
+                     timeperiod=timeperiod,
+                     nbdevup=LargeStdDev,
+                     nbdevdn=LargeStdDev, 
+                     matype=talib.MA_Type.SMA)
+    plt.plot(middleband_Small[-200:-1]
+        ,color='green')
+    plt.plot(upperband_Small[-200:-1]
+        ,color='blue')
+    plt.plot(lowerband_Small[-200:-1]
+        ,color='blue')
+    plt.plot(lowerband_Large[-200:-1]
+        ,color='red')
+    plt.plot(upperband_Large[-200:-1]
+        ,color='red')
+    plt.title('BollingerBand Example')
+    plt.show()
 #這邊的布林通道交易訊號使用以下連結的
 #https://www.investopedia.com/trading/using-bollinger-bands-to-gauge-trends/#:~:text=Bollinger%20Bands%C2%AE%20are%20a%20trading%20tool%20used%20to%20determine,lot%20of%20other%20relevant%20information.
 #Create Multiple Bands for Greater Insight
@@ -316,7 +435,7 @@ def createSignalBBAND(close,
     upperband_Large, middleband_Large, lowerband_Large = \
         talib.BBANDS(close, 
                      timeperiod=timeperiod,
-                     nbdevup=SmallStdDev,
+                     nbdevup=LargeStdDev,
                      nbdevdn=LargeStdDev, 
                      matype=talib.MA_Type.SMA)    
     ENABLESHORT=True
@@ -347,9 +466,9 @@ def OptimizeBBAND(
     for period in range_period:
         for SmallStdDev in range_SmallStdDev:
             for LargeStdDev in range_LargeStdDev:
-                print("period:"+str(period))
-                print("SmallStdDev:"+str(SmallStdDev))
-                print("LargeStdDev:"+str(LargeStdDev))
+				print("period:"+str(period))
+				print("SmallStdDev:"+str(SmallStdDev))
+				print("LargeStdDev:"+str(LargeStdDev))
                 if(LargeStdDev<=SmallStdDev):
                     continue
                 #製作買賣訊號
@@ -374,8 +493,8 @@ def OptimizeBBAND(
 if(target=='BBAND'):
     #最佳化period,SmallStdDev,LargeStdDev
     range_period=numpy.arange(2,100,1,dtype=int)
-    range_SmallStdDev=numpy.arange(0.5,5,0.5,dtype=float)
-    range_LargeStdDev=numpy.arange(0.5,5,0.5,dtype=float)
+    range_SmallStdDev=numpy.arange(0.5,3,0.1,dtype=float)
+    range_LargeStdDev=numpy.arange(0.5,3,0.1,dtype=float)
     bestret,bestret_series,parameters=OptimizeBBAND(
         df_MXFR1,
         range_period,
@@ -384,12 +503,36 @@ if(target=='BBAND'):
         )
     print('BBAND bestret:'+str(bestret))
     print('BBAND MDD:'+str(backtesttool.calculatMDD(bestret_series)))
-    
+    plt.plot(numpy.log10(
+        backtesttool.prefixProd(bestret_series))
+        ,color='green')
+    plt.title('BBAND Profit(log)')
+    plt.show()
 #########################################
 #5.5 價格通道
 ###########################################
 #價格通道就是過去一段時間的最高價和最低價組成的通道線
 #當最高價創新高的時候做多,最低價創新低的時候做空
+
+if(target=='PriceChannel'):    
+    period=20
+    channel_high=high.rolling(period).max()
+    channel_low=low.rolling(period).min()
+
+    plt.plot(close[-50:-1]
+        ,color='green')
+    plt.plot(channel_high[-50:-1]
+        ,color='blue')
+    plt.plot(channel_low[-50:-1]
+        ,color='blue')
+    plt.plot(high[-50:-1]
+        ,color='red'
+        , marker='o')
+    plt.plot(low[-50:-1]
+        ,color='green'
+        , marker='o')
+    plt.title('PriceChannel Example')
+    plt.show()
 def createSignalPriceChannel(
         df,period):
     high=df['High']
@@ -418,7 +561,7 @@ def OptimizePriceChannel(
     bestret_series=[]
     best_period=0
     for period in range_period:
-        print("period:"+str(period))
+		print("period:"+str(period))
         #製作買賣訊號
         BuySignal=createSignalPriceChannel(df,period)
         #對訊號進行回測
@@ -442,7 +585,11 @@ if(target=='PriceChannel'):
         )
     print('PriceChannel bestret:'+str(bestret))
     print('PriceChannel MDD:'+str(backtesttool.calculatMDD(bestret_series)))
-    
+    plt.plot(numpy.log10(
+        backtesttool.prefixProd(bestret_series))
+        ,color='green')
+    plt.title('PriceChannel Profit(log)')
+    plt.show()
 #########################################
 #5.6. 網格交易策略
 ###########################################
@@ -489,11 +636,11 @@ def OptimizeGrid(
             for BiasLower in range_BiasLower:
                 for LowerPosition in range_LowerPosition:
                     for period in range_period:
-                        print("BiasUpper:"+str(BiasUpper))
-                        print("UpperPosition:"+str(UpperPosition))
-                        print("BiasLower:"+str(BiasLower))
-                        print("LowerPosition:"+str(LowerPosition))
-                        print("period:"+str(period))
+						print("BiasUpper:"+str(BiasUpper))
+						print("UpperPosition:"+str(UpperPosition))
+						print("BiasLower:"+str(BiasLower))
+						print("LowerPosition:"+str(LowerPosition))
+						print("period:"+str(period))
                         if(BiasUpper<=BiasLower):
                             continue
                         if(UpperPosition>=LowerPosition):
@@ -624,14 +771,19 @@ if(target=='Grid'):
     buyTW=position
     buyUS=1.0-position
     
-    retTW,retseriesTW=backtesttool.backtest_signal(TW_open,buyTW,spread=0.0000176)
-    retUS,retseriesUS=backtesttool.backtest_signal(US_open,buyUS,spread=0.0000176)
+    retTW,retseriesTW=backtesttool.backtest_signal(TW_open,buyTW,tradecost=0.0000176)
+    retUS,retseriesUS=backtesttool.backtest_signal(US_open,buyUS,tradecost=0.0000176)
     retseries=(retseriesTW-1.0)+(retseriesUS-1.0)+1.0
     prefixProfit=backtesttool.prefixProd(retseries)
     #plt.plot(buyTW,color='red')
     print('strategyMDD:',backtesttool.calculatMDD(retseries))
     print('USMDD:',backtesttool.calculatMDD_fromClose(US_close))
     print('TWMDD:',backtesttool.calculatMDD_fromClose(TW_close))
-    print('strategyProfit:',prefixProfit.tolist()[-1]/prefixProfit.tolist()[0])
-    print('USProfit:',US_close.tolist()[-1]/US_close.tolist()[0])
-    print('TWProfit:',TW_close.tolist()[-1]/TW_close.tolist()[0])
+    print('strategyProfit:',(prefixProfit.tolist()[-1]/prefixProfit.tolist()[0])-1)
+    print('USProfit:',(US_close.tolist()[-1]/US_close.tolist()[0])-1)
+    print('TWProfit:',(TW_close.tolist()[-1]/TW_close.tolist()[0])-1)
+    plt.plot(numpy.log10(
+        backtesttool.prefixProd(retseries))
+        ,color='green')
+    plt.title('Grid Profit(log)')
+    plt.show()

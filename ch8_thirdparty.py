@@ -29,3 +29,4 @@ df_result=read_touchance.read_data_to_df(
 df_clean=read_touchance.removeUnuesdData(df_result)
 print('使用touchance讀取1分k結果')
 print(df_clean.head())
+

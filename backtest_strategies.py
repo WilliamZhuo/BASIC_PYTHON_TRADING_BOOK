@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy
 import backtesttool
+ENABLEDEBUG=0
 
 #########################################
 #MACD指標
@@ -53,9 +54,10 @@ def OptimizeMACD(
     for periodFast in rangeFast:
         for periodSlow in rangeSlow:
             for periodSignal in rangeSignal:
-                print("periodFast:"+str(periodFast))
-                print("periodSlow:"+str(periodSlow))
-                print("periodSignal:"+str(periodSignal))
+                if(ENABLEDEBUG):
+                    print("periodFast:"+str(periodFast))
+                    print("periodSlow:"+str(periodSlow))
+                    print("periodSignal:"+str(periodSignal))
                 #錯誤檢查,快線週期要比慢線短
                 if(periodFast>=periodSlow):
                     continue
@@ -122,9 +124,10 @@ def OptimizeKD(
     for fastk in range_fastk:
         for slowk in range_slowk:
             for slowd in range_slowd:
-                print("fastk:"+str(fastk))
-                print("slowk:"+str(slowk))
-                print("slowd:"+str(slowd))
+                if(ENABLEDEBUG):
+                    print("fastk:"+str(fastk))
+                    print("slowk:"+str(slowk))
+                    print("slowd:"+str(slowd))
 
                 #製作買賣訊號
                 BuySignal=createSignalKD(highPrice,lowPrice,closePrice,
@@ -182,9 +185,10 @@ def OptimizeRSI(
     for period in range_period:
         for longTH in range_longTH:
             for shortTH in range_shortTH:
-                print("period:"+str(period))
-                print("longTH:"+str(longTH))
-                print("shortTH:"+str(shortTH))
+                if(ENABLEDEBUG):
+                    print("period:"+str(period))
+                    print("longTH:"+str(longTH))
+                    print("shortTH:"+str(shortTH))
                 if(longTH<=shortTH):
                     continue
                 #製作買賣訊號
@@ -225,7 +229,7 @@ def createSignalBBAND(close,
     upperband_Large, middleband_Large, lowerband_Large = \
         talib.BBANDS(close, 
                      timeperiod=timeperiod,
-                     nbdevup=SmallStdDev,
+                     nbdevup=LargeStdDev,
                      nbdevdn=LargeStdDev, 
                      matype=talib.MA_Type.SMA)    
     ENABLESHORT=True
@@ -256,9 +260,10 @@ def OptimizeBBAND(
     for period in range_period:
         for SmallStdDev in range_SmallStdDev:
             for LargeStdDev in range_LargeStdDev:
-                print("period:"+str(period))
-                print("SmallStdDev:"+str(SmallStdDev))
-                print("LargeStdDev:"+str(LargeStdDev))
+                if(ENABLEDEBUG):
+                    print("period:"+str(period))
+                    print("SmallStdDev:"+str(SmallStdDev))
+                    print("LargeStdDev:"+str(LargeStdDev))
                 if(LargeStdDev<=SmallStdDev):
                     continue
                 #製作買賣訊號
@@ -312,7 +317,8 @@ def OptimizePriceChannel(
     bestret_series=[]
     best_period=0
     for period in range_period:
-        print("period:"+str(period))
+        if(ENABLEDEBUG):
+            print("period:"+str(period))
         #製作買賣訊號
         BuySignal=createSignalPriceChannel(df,period)
         #對訊號進行回測
@@ -371,11 +377,12 @@ def OptimizeGrid(
             for BiasLower in range_BiasLower:
                 for LowerPosition in range_LowerPosition:
                     for period in range_period:
-                        print("BiasUpper:"+str(BiasUpper))
-                        print("UpperPosition:"+str(UpperPosition))
-                        print("BiasLower:"+str(BiasLower))
-                        print("LowerPosition:"+str(LowerPosition))
-                        print("period:"+str(period))
+                        if(ENABLEDEBUG):
+                            print("BiasUpper:"+str(BiasUpper))
+                            print("UpperPosition:"+str(UpperPosition))
+                            print("BiasLower:"+str(BiasLower))
+                            print("LowerPosition:"+str(LowerPosition))
+                            print("period:"+str(period))
                         if(BiasUpper<=BiasLower):
                             continue
                         if(UpperPosition>=LowerPosition):

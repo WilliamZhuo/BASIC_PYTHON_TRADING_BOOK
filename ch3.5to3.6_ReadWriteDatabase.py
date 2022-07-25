@@ -141,6 +141,7 @@ def getKbars(
     #把0050的tick轉成dataframe，並且印出最前面的資料
     df = pd.DataFrame({**kbars})#轉成dataframe
     df.index =pd.to_datetime(df.ts)
+    df=df.groupby(df.index).first()
     df=df.drop(columns='ts')
     df.drop(df.tail(1).index,inplace=True)
     df=remove_illegal_time(df)
@@ -153,8 +154,8 @@ df_0050=getKbars(api
           ,start=str(two_years_ago)
           ,end=str(yesterday))
 
-print('df_0050.head():')
-print(df_0050.head())
+print('df_0050:')
+print(df_0050)
 
 
 #取得小型台指kbars資料, 歷史資料有兩年,一次只能取一年
@@ -164,7 +165,7 @@ kbars_MXFR1=getKbars(api
           ,end=str(yesterday))
 
 print('kbars_MXFR1:')
-print(kbars_MXFR1.head())
+print(kbars_MXFR1)
 
 #取得ticks
 def getTicks(
@@ -194,6 +195,7 @@ def getTicks(
             )
         df_ticks = pd.DataFrame({**ticks})#轉成dataframe
         df_ticks.index =pd.to_datetime(df_ticks.ts)
+        df_ticks=df_ticks.groupby(df.index).first()
         list_ticks.append(df_ticks)
         #加一天
         day=day+datetime.timedelta(days=1)
@@ -369,6 +371,7 @@ def readKbarsFromDB(contractName):
     df=pd.read_sql(
         'SELECT * FROM '+contractName
         ,conn)
+    df.index=df['ts']
     return df
 
 def readTicksFromDB(contractName):
@@ -381,6 +384,5 @@ def readTicksFromDB(contractName):
 
 
 df=readKbarsFromDB(contractName='MXFR1')
-
 
 

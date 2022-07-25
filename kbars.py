@@ -61,7 +61,6 @@ def getFrontMonthContract(
             min_id=l[i].code
     ret=api.Contracts.Futures[min_id]
     return ret
-    
 
 #######################################
 #用datetime取得兩年前/一年前/昨天的日期
@@ -294,12 +293,12 @@ def backFillTicks(
         #create table
         ticks.to_sql(name=contractName,con= conn, if_exists='replace', index=True) 
     conn.close()
-    
 
 #寫成函數
 def sjBarsToDf(sjBars):
     dfBars = pd.DataFrame({**sjBars})#轉成dataframe
     dfBars.index =pd.to_datetime(dfBars.ts)
+    dfBars=dfBars.groupby(dfBars.index).first()
     return dfBars
 def ticksTo1mkbars(ticks):
     period='1min'

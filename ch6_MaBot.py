@@ -198,7 +198,7 @@ def MABotBody():
                           isCancelled\
                           or  isFailed\
                           or  isFilled\
-                          ) 
+                          )
                 cond2=thistrade.contract.category==contractName
                 if(cond1 and cond2):
                     tradeCancel.append(thistrade)
@@ -344,7 +344,7 @@ def MABotBody():
             if(hour>=15 or hour<=5):
                 cond_continue=True
         
-        #夜盤收盤特取消掛單
+        #夜盤收盤取消掛單
         if(minute==0) and (hour==5):
             try:
                 bot1.cancelOrders()

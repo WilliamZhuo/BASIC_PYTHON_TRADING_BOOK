@@ -61,37 +61,51 @@ def backtest_signal(
     #list轉numpy比較快
     retStrategy=numpy.array(l).prod()    
     #NOTE:最後一天的報酬率還沒出來，要等隔天的開盤價出來才會知道
-    return retStrategy,ret_series
+    return retStrategy-1,ret_series
 
 def optimizeMA(
         df,
-        period_range#=numpy.arange(2,100,1,dtype=int)
+        period_range_Long,#=numpy.arange(2,100,1,dtype=int)
+        period_range_Short#=numpy.arange(2,100,1,dtype=int)
         ):
-    def createSignal(close,period):
-        ma=talib.EMA(close,period)
-        BuySignal=close>ma
-        return BuySignal
+    def createSignal(close,periodShort,periodLong):
+        maShort=talib.EMA(close,periodShort)
+        maLong=talib.EMA(close,periodLong)
+        ENABLESHORT=False
+        #允許放空的訊號寫法
+        if(ENABLESHORT): 
+            BuySignal=(maShort>maLong).astype(int)
+            ShortSignal=(maShort<maLong).astype(int)
+            return BuySignal-ShortSignal    
+        #不允許放空的訊號寫法，兩個差在允許放空的部分多了ShortSignal            
+        else:
+            BuySignal=(maShort>maLong).astype(int)
+            return BuySignal
     openPrice=df['Open']
     closePrice=df['Close']  
     bestret=0
     bestret_series=[]
-    bestperiod=0
-    for period in period_range:
-        #製作買賣訊號
-        BuySignal=createSignal(closePrice,period)
-        #對訊號進行回測
-        retStrategy,ret_series=backtest_signal(
-            openPrice
-            ,BuySignal
-            ,spread=G_spread
-            ,sizing=1.0)
-        #如果結果比之前更好,就記錄下來
-        if(bestret<retStrategy):
-            bestret=retStrategy
-            bestret_series=ret_series
-            bestperiod=period
-    return bestret,bestret_series,bestperiod
-
+    bestperiodLong=0
+    bestperiodShort=0
+    for periodLong in period_range_Long:
+        for periodShort in period_range_Short:
+            if(periodLong<=periodShort):
+                continue
+            #製作買賣訊號
+            BuySignal=createSignal(closePrice,periodShort,periodLong)
+            #對訊號進行回測
+            retStrategy,ret_series=backtest_signal(
+                openPrice
+                ,BuySignal
+                ,tradecost=G_tradecost
+                ,sizing=1.0)
+            #如果結果比之前更好,就記錄下來
+            if(bestret<retStrategy):
+                bestret=retStrategy
+                bestret_series=ret_series
+                bestperiodLong=periodLong
+                bestperiodShort=periodShort
+    return bestret,bestret_series,(bestperiodLong,bestperiodShort)
 
 def prefixProd(retseries):
     clone=retseries.copy()

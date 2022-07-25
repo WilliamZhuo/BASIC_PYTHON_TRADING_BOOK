@@ -22,12 +22,19 @@ close_price=df_MXFR1['Close']
 ma100=talib.EMA(close_price,100)
 plt.plot(close_price,color='green')
 plt.plot(ma100,color='red')
+plt.title('Close data and moving average')
 plt.show()  
 
 #長短均線交叉的買賣訊號, 短均線大於長均買進, 短均線小於長均線賣出
 #當短均週期設成1的時候就等於前面的收盤價和均線交叉的交易系統
 ma50=talib.EMA(close_price,50)
 BuySignal=ma50>ma100
+print('Buysignal content:')
+print(BuySignal)
+plt.plot(ma50,color='red')
+plt.plot(ma100,color='blue')
+plt.title('ma50 vs ma100')
+plt.show()  
 
 ########################################
 #4.2 計算策略的投資報酬率
@@ -47,7 +54,7 @@ profit=period_profit \
       (open_price \
         ,begin=0 \
         ,end=open_price.size-1)
-print('買進持有報酬:',profit)
+print('買進持有報酬率:',profit)
 
 
 #####################################
@@ -102,14 +109,14 @@ def backtest_signal(
     #list轉numpy比較快
     retStrategy=numpy.array(l).prod()    
     #NOTE:最後一天的報酬率還沒出來，要等隔天的開盤價出來才會知道
-    return retStrategy,ret_series
+    return retStrategy-1,ret_series
 
 retStrategy,ret_series=backtest_signal(
         open_price
         ,BuySignal
         ,tradecost=G_tradecost
         ,sizing=1.0)
-print('均線策略報酬:',retStrategy)
+print('均線策略報酬率:',retStrategy)
 
 def prefixProd(retseries):
     clone=retseries.copy()
@@ -131,6 +138,12 @@ def calculatMDD(retSeries):
     return MDD
 MDD=calculatMDD(ret_series)
 print('均線MDD:',MDD)
+plt.plot(prefixProd(ret_series),color='green')
+plt.title('Strategy profit')
+plt.show()
+plt.plot(numpy.log10(prefixProd(ret_series)),color='green')
+plt.title('Strategy profit(log)')
+plt.show()
 
 HoldSignal=BuySignal.copy()
 HoldSignal[:]=1
@@ -140,8 +153,11 @@ retStrategyHold,ret_seriesHold=backtest_signal(
         ,tradecost=G_tradecost
         ,sizing=1.0)
 MDD=calculatMDD(ret_seriesHold)
-print('買進持有報酬:',retStrategyHold)
+print('買進持有報酬率:',retStrategyHold)
 print('買進持有MDD:',MDD)
+plt.plot(numpy.log10(prefixProd(ret_seriesHold)),color='green')
+plt.title('Hold profit(log)')
+plt.show()
 
 ###########################################
 #4.2.3.計算兩檔商品做成投資組合的報酬率
@@ -176,12 +192,21 @@ retStrategy_FXF,ret_series_FXF=backtest_signal(
         ,BuySignal_FXF
         ,tradecost=G_tradecost
         ,sizing=0.5)
-ret_series_MIX=(ret_series_MXF-1.0)+(ret_series_FXF-1.0)+1.0
-retStrategy_MIX=(retStrategy_MXF-1.0)+(retStrategy-1.0)+1.0
+ret_series_MIX=(ret_series_MXF-1)+(ret_series_FXF-1)+1
+retStrategy_MIX=retStrategy_MXF+retStrategy
 MDD=calculatMDD(ret_series_MIX)
-print('混合兩檔商品用均線交易的報酬:',retStrategy_MIX)
+print('混合兩檔商品用均線交易的報酬率:',retStrategy_MIX)
 print('混合兩檔商品用均線交易的MDD:',MDD)
 
+plt.plot(numpy.log10(prefixProd(ret_series_MXF)),color='green')
+plt.title('MXF profit(log)')
+plt.show()
+plt.plot(numpy.log10(prefixProd(ret_series_FXF)),color='green')
+plt.title('FXF profit(log)')
+plt.show()
+plt.plot(numpy.log10(prefixProd(ret_series_MIX)),color='green')
+plt.title('Portfolio profit(log)')
+plt.show()
 ############################################
 #4.3 均線訊號最佳化
 ###################################
@@ -235,15 +260,18 @@ ret,ret_series,bestperiod=\
                numpy.arange(2,100,1,dtype=int))
 
 MDD=calculatMDD(ret_series)
-print('最佳化的報酬:',ret)
+print('最佳化的報酬率:',ret)
 print('最佳化的MDD:',MDD)
         
+plt.plot(numpy.log10(prefixProd(ret_series)),color='green')
+plt.title('Profit after optimizing(log)')
+plt.show()
 ############################################
 #4.4.過擬合問題
 ###################################
 #分出訓練集和測試集，三個月前的資料當訓練集，三個月內的資料當測試集
 date=kbars.sub_N_Days(
-        days=90
+        days=120
         ,date=df_MXFR1.index[-1]
         )
 df_trainset=df_MXFR1[df_MXFR1.index<=date]
