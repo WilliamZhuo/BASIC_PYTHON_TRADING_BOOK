@@ -128,7 +128,7 @@ if(target=='MACD'):
             rangeSignal#=numpy.arange(2,100,1,dtype=int)
             )
     print('MACD bestret:'+str(bestret))
-    print('MACD MDD:'+str(backtesttool.calculatMDD(bestret_series)))
+    print('MACD MDD:'+str(backtesttool.calculateMDD(bestret_series)))
     
     plt.plot(numpy.log10(
         backtesttool.prefixProd(bestret_series))
@@ -250,7 +250,7 @@ if(target=='KD'):
         range_slowd
         )
     print('KD bestret:'+str(bestret))
-    print('KD MDD:'+str(backtesttool.calculatMDD(bestret_series)))
+    print('KD MDD:'+str(backtesttool.calculateMDD(bestret_series)))
     plt.plot(numpy.log10(
         backtesttool.prefixProd(bestret_series))
         ,color='green')
@@ -374,7 +374,7 @@ if(target=='RSI'):
         range_shortTH
         )
     print('RSI bestret:'+str(bestret))
-    print('RSI MDD:'+str(backtesttool.calculatMDD(bestret_series)))
+    print('RSI MDD:'+str(backtesttool.calculateMDD(bestret_series)))
     plt.plot(numpy.log10(
         backtesttool.prefixProd(bestret_series))
         ,color='green')
@@ -502,7 +502,7 @@ if(target=='BBAND'):
         range_LargeStdDev
         )
     print('BBAND bestret:'+str(bestret))
-    print('BBAND MDD:'+str(backtesttool.calculatMDD(bestret_series)))
+    print('BBAND MDD:'+str(backtesttool.calculateMDD(bestret_series)))
     plt.plot(numpy.log10(
         backtesttool.prefixProd(bestret_series))
         ,color='green')
@@ -584,7 +584,7 @@ if(target=='PriceChannel'):
         range_period
         )
     print('PriceChannel bestret:'+str(bestret))
-    print('PriceChannel MDD:'+str(backtesttool.calculatMDD(bestret_series)))
+    print('PriceChannel MDD:'+str(backtesttool.calculateMDD(bestret_series)))
     plt.plot(numpy.log10(
         backtesttool.prefixProd(bestret_series))
         ,color='green')
@@ -776,9 +776,9 @@ if(target=='Grid'):
     retseries=(retseriesTW-1.0)+(retseriesUS-1.0)+1.0
     prefixProfit=backtesttool.prefixProd(retseries)
     #plt.plot(buyTW,color='red')
-    print('strategyMDD:',backtesttool.calculatMDD(retseries))
-    print('USMDD:',backtesttool.calculatMDD_fromClose(US_close))
-    print('TWMDD:',backtesttool.calculatMDD_fromClose(TW_close))
+    print('strategyMDD:',backtesttool.calculateMDD(retseries))
+    print('USMDD:',backtesttool.calculateMDD_fromClose(US_close))
+    print('TWMDD:',backtesttool.calculateMDD_fromClose(TW_close))
     print('strategyProfit:',(prefixProfit.tolist()[-1]/prefixProfit.tolist()[0])-1)
     print('USProfit:',(US_close.tolist()[-1]/US_close.tolist()[0])-1)
     print('TWProfit:',(TW_close.tolist()[-1]/TW_close.tolist()[0])-1)

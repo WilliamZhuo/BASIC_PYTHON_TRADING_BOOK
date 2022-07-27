@@ -438,7 +438,7 @@ if __name__ == '__main__':
                 rangeSignal#=numpy.arange(2,100,1,dtype=int)
                 )
         print('MACD bestret:'+str(bestret))
-        print('MACD MDD:'+str(backtesttool.calculatMDD(bestret_series)))
+        print('MACD MDD:'+str(backtesttool.calculateMDD(bestret_series)))
     if(target=='KD'):
         #最佳化fastk,slowk,slowd
         range_fastk=numpy.arange(2,100,1,dtype=int)
@@ -451,7 +451,7 @@ if __name__ == '__main__':
             range_slowd
             )
         print('KD bestret:'+str(bestret))
-        print('KD MDD:'+str(backtesttool.calculatMDD(bestret_series)))        
+        print('KD MDD:'+str(backtesttool.calculateMDD(bestret_series)))        
     if(target=='RSI'):
         #最佳化period,longTH,shortTH
         range_period=numpy.arange(2,100,1,dtype=int)
@@ -464,7 +464,7 @@ if __name__ == '__main__':
             range_shortTH
             )
         print('RSI bestret:'+str(bestret))
-        print('RSI MDD:'+str(backtesttool.calculatMDD(bestret_series)))        
+        print('RSI MDD:'+str(backtesttool.calculateMDD(bestret_series)))        
     if(target=='BBAND'):
         #最佳化period,SmallStdDev,LargeStdDev
         range_period=numpy.arange(2,100,1,dtype=int)
@@ -477,7 +477,7 @@ if __name__ == '__main__':
             range_LargeStdDev
             )
         print('BBAND bestret:'+str(bestret))
-        print('BBAND MDD:'+str(backtesttool.calculatMDD(bestret_series)))        
+        print('BBAND MDD:'+str(backtesttool.calculateMDD(bestret_series)))        
     if(target=='PriceChannel'):
         #最佳化period
         range_period=numpy.arange(2,1000,1,dtype=int)
@@ -486,7 +486,7 @@ if __name__ == '__main__':
             range_period
             )
         print('PriceChannel bestret:'+str(bestret))
-        print('PriceChannel MDD:'+str(backtesttool.calculatMDD(bestret_series)))        
+        print('PriceChannel MDD:'+str(backtesttool.calculateMDD(bestret_series)))        
     if(target=='Grid'):
         import yfinance as yf    
         tw = yf.Ticker("0052.tw")
@@ -593,9 +593,9 @@ if __name__ == '__main__':
         retseries=(retseriesTW-1.0)+(retseriesUS-1.0)+1.0
         prefixProfit=backtesttool.prefixProd(retseries)
         #plt.plot(buyTW,color='red')
-        print('strategyMDD:',backtesttool.calculatMDD(retseries))
-        print('USMDD:',backtesttool.calculatMDD_fromClose(US_close))
-        print('TWMDD:',backtesttool.calculatMDD_fromClose(TW_close))
+        print('strategyMDD:',backtesttool.calculateMDD(retseries))
+        print('USMDD:',backtesttool.calculateMDD_fromClose(US_close))
+        print('TWMDD:',backtesttool.calculateMDD_fromClose(TW_close))
         print('strategyProfit:',prefixProfit.tolist()[-1]/prefixProfit.tolist()[0])
         print('USProfit:',US_close.tolist()[-1]/US_close.tolist()[0])
         print('TWProfit:',TW_close.tolist()[-1]/TW_close.tolist()[0])

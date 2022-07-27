@@ -126,7 +126,7 @@ def prefixProd(retseries):
         clone[i]=prod
     return clone
 #計算MDD，最大虧損
-def calculatMDD(retSeries):
+def calculateMDD(retSeries):
     prefixProdSeries=prefixProd(retSeries)
     maxval=prefixProdSeries[0]
     MDD=0
@@ -136,7 +136,7 @@ def calculatMDD(retSeries):
         if(temp>MDD):
             MDD=temp
     return MDD
-MDD=calculatMDD(ret_series)
+MDD=calculateMDD(ret_series)
 print('均線MDD:',MDD)
 plt.plot(prefixProd(ret_series),color='green')
 plt.title('Strategy profit')
@@ -152,7 +152,7 @@ retStrategyHold,ret_seriesHold=backtest_signal(
         ,HoldSignal
         ,tradecost=G_tradecost
         ,sizing=1.0)
-MDD=calculatMDD(ret_seriesHold)
+MDD=calculateMDD(ret_seriesHold)
 print('買進持有報酬率:',retStrategyHold)
 print('買進持有MDD:',MDD)
 plt.plot(numpy.log10(prefixProd(ret_seriesHold)),color='green')
@@ -194,7 +194,7 @@ retStrategy_FXF,ret_series_FXF=backtest_signal(
         ,sizing=0.5)
 ret_series_MIX=(ret_series_MXF-1)+(ret_series_FXF-1)+1
 retStrategy_MIX=retStrategy_MXF+retStrategy
-MDD=calculatMDD(ret_series_MIX)
+MDD=calculateMDD(ret_series_MIX)
 print('混合兩檔商品用均線交易的報酬率:',retStrategy_MIX)
 print('混合兩檔商品用均線交易的MDD:',MDD)
 
@@ -259,7 +259,7 @@ ret,ret_series,bestperiod=\
                numpy.arange(2,100,1,dtype=int),\
                numpy.arange(2,100,1,dtype=int))
 
-MDD=calculatMDD(ret_series)
+MDD=calculateMDD(ret_series)
 print('最佳化的報酬率:',ret)
 print('最佳化的MDD:',MDD)
         

@@ -115,7 +115,7 @@ def prefixProd(retseries):
         clone[i]=prod
     return clone
 #計算MDD，最大虧損
-def calculatMDD(retSeries):
+def calculateMDD(retSeries):
     prefixProdSeries=prefixProd(retSeries)
     maxval=prefixProdSeries[0]
     MDD=0
@@ -128,7 +128,7 @@ def calculatMDD(retSeries):
 
 #計算MDD，最大虧損
 #也可以傳入return series的prefix product
-def calculatMDD_fromClose(close):
+def calculateMDD_fromClose(close):
     prefixProdSeries=close
     maxval=prefixProdSeries[0]
     MDD=0
