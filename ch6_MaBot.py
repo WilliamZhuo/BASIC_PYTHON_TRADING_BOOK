@@ -223,10 +223,10 @@ def MABotBody():
                         price=self.futureBid,
                         quantity=quantityTrade,
                         action=shioaji.constant.Action.Buy,
-                		price_type=shioaji.constant.FuturesPriceType.MKP,
-                		order_type=shioaji.constant.TFTOrderType.IOC,   
-                		octype = shioaji.constant.FuturesOCType.Auto,
-                		account=api.futopt_account,
+                        price_type=shioaji.constant.FuturesPriceType.MKP,
+                        order_type=shioaji.constant.TFTOrderType.IOC,   
+                        octype = shioaji.constant.FuturesOCType.Auto,
+                        account=api.futopt_account,
                     )    
                     s=str(datetime.datetime.now())
                     s=s+'buy order'
@@ -237,10 +237,10 @@ def MABotBody():
                         price=self.futureAsk,
                         quantity=abs(quantityTrade),
                         action=shioaji.constant.Action.Sell,
-                		price_type=shioaji.constant.FuturesPriceType.MKP,
-                		order_type=shioaji.constant.TFTOrderType.IOC,     
-                		octype = shioaji.constant.FuturesOCType.Auto,
-                		account=api.futopt_account,
+                        price_type=shioaji.constant.FuturesPriceType.MKP,
+                        order_type=shioaji.constant.TFTOrderType.IOC,     
+                        octype = shioaji.constant.FuturesOCType.Auto,
+                        account=api.futopt_account,
                     )
                     s=str(datetime.datetime.now())
                     s=s+'sell order'

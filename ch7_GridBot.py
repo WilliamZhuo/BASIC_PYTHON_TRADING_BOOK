@@ -270,12 +270,12 @@ def GridbotBody():
                             money=money-cost #local money int
                             trade = api.place_order(contract, order)
                             s=str(datetime.datetime.now())
-                            s=s+'buy upper'				
+                            s=s+'buy upper'                
                             logging.debug(s)
                     else:
                         trade = api.place_order(contract, order) 
                         s=str(datetime.datetime.now())
-                        s=s+'sell upper'				
+                        s=s+'sell upper'                
                         logging.debug(s)
             #這邊開始掛分母的單
             #首先確保掛單的量不會把交割款用完

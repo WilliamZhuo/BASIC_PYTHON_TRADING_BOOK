@@ -195,7 +195,7 @@ def getTicks(
             )
         df_ticks = pd.DataFrame({**ticks})#轉成dataframe
         df_ticks.index =pd.to_datetime(df_ticks.ts)
-        df_ticks=df_ticks.groupby(df.index).first()
+        df_ticks=df_ticks.groupby(df_ticks.index).first()
         list_ticks.append(df_ticks)
         #加一天
         day=day+datetime.timedelta(days=1)
@@ -223,7 +223,7 @@ def checkTableExist(
         ):    
     exist=False
     conn = sqlite3.connect(dbname)
-    cur = conn.cursor()			
+    cur = conn.cursor()            
     tablename=tablename
     
     #get the count of tables with the name
@@ -233,7 +233,7 @@ def checkTableExist(
     ret=cur.fetchall()
     #if the count is 1, then table exists
     if len(ret)>0 : 
-    	exist=True
+        exist=True
     
     #close the connection
     conn.close()
@@ -245,7 +245,7 @@ def checkLastTs(
         ,tablename#='\'MXFR1\''
         ): 
     conn = sqlite3.connect(dbname)
-    cur = conn.cursor()		
+    cur = conn.cursor()        
     cur.execute('SELECT * FROM '+
                 tablename+' WHERE ts IN (SELECT max(ts) FROM '+
                 tablename+')')
