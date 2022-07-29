@@ -338,7 +338,7 @@ def calculate_fibonacci_modified(n):
             return val
     return fibonacci(n,l)
 
-import datetime
+import time
 start = time.time()
 calculate_fibonacci_modified(30)
 end = time.time()

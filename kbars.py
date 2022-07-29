@@ -113,6 +113,7 @@ def getKbars(
     #把0050的tick轉成dataframe，並且印出最前面的資料
     df = pd.DataFrame({**kbars})#轉成dataframe
     df.index =pd.to_datetime(df.ts)
+    df=df.groupby(df.index).first()
     df=df.drop(columns='ts')
     df.drop(df.tail(1).index,inplace=True)
     df=remove_illegal_time(df)
