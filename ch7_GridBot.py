@@ -528,7 +528,7 @@ GridbotBody()
 import datetime
 import time
 while(1):         
-    #check reboot once per minute
+    #check reboot once per 30 minutes
     current_time = time.time()
     cooldown=60*30
     time_to_sleep = cooldown - (current_time % cooldown)

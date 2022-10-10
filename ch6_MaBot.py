@@ -336,7 +336,9 @@ def MABotBody():
             cond_continue=True
         if(hour==14):
             cond_continue=True
-        if(hour ==13  and minute>45):
+		
+		#stop sending order after minute== 30 
+        if(hour ==13  and minute>30):
             cond_continue=True
             
         #夜盤交易時間
@@ -381,7 +383,7 @@ MABotBody()
 import datetime
 import time
 while(1):         
-    #check reboot once per minute
+    #check reboot once per 30 minutes
     current_time = time.time()
     cooldown=60*30
     time_to_sleep = cooldown - (current_time % cooldown)

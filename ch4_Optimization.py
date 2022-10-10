@@ -269,7 +269,7 @@ plt.show()
 ############################################
 #4.4.過擬合問題
 ###################################
-#分出訓練集和測試集，三個月前的資料當訓練集，三個月內的資料當測試集
+#分出訓練集和測試集，四個月前的資料當訓練集，四個月內的資料當測試集
 date=kbars.sub_N_Days(
         days=120
         ,date=df_MXFR1.index[-1]
@@ -282,7 +282,7 @@ ret_train,ret_series_train,bestperiod_train \
                 numpy.arange(2,100,1,dtype=int),\
                numpy.arange(2,100,1,dtype=int))
 
-#用測試集測試最近三個月的績效
+#用測試集測試最近四個月的績效
 ma_short=talib.EMA(df_testset['Close'],bestperiod[1])
 ma_long=talib.EMA(df_testset['Close'],bestperiod[0])
 buy_signal=ma_short>ma_long
