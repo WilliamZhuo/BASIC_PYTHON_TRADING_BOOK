@@ -94,7 +94,8 @@ def GridbotBody():
         def getPositions(self):
             api.update_status()
             portfolio=api.list_positions(unit=shioaji.constant.Unit.Share)
-            df_positions = pd.DataFrame(portfolio)
+            #df_positions = pd.DataFrame(portfolio)
+            df_positions = pd.DataFrame(s.__dict__ for s in portfolio)
             quantity=df_positions.loc[df_positions['code'] == self.upperid]['quantity']
             if(quantity.size==0):
                 self.uppershare=0
