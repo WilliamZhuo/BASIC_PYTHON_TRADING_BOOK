@@ -588,8 +588,8 @@ if __name__ == '__main__':
         buyTW=position
         buyUS=1.0-position
         
-        retTW,retseriesTW=backtesttool.backtest_signal(TW_open,buyTW,spread=0.0000176)
-        retUS,retseriesUS=backtesttool.backtest_signal(US_open,buyUS,spread=0.0000176)
+        retTW,retseriesTW=backtesttool.backtest_signal(TW_open,buyTW,tradecost=0.0000176)
+        retUS,retseriesUS=backtesttool.backtest_signal(US_open,buyUS,tradecost=0.0000176)
         retseries=(retseriesTW-1.0)+(retseriesUS-1.0)+1.0
         prefixProfit=backtesttool.prefixProd(retseries)
         #plt.plot(buyTW,color='red')
