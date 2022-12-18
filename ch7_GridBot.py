@@ -35,11 +35,11 @@ def GridbotBody():
         upperid=g_upperid
         lowerid=g_lowerid
         
-        parameters={'BiasUpperLimit':2.2,\
-             'UpperLimitPosition':0.1,\
-             'BiasLowerLimit':0.9,\
+        parameters={'BiasUpperLimit':1.0,\
+             'UpperLimitPosition':0.4,\
+             'BiasLowerLimit':0.85,\
              'LowerLimitPosition':0.9,\
-             'BiasPeriod':55}
+             'BiasPeriod':81}
         year=0
         month=0
         day=0
@@ -479,16 +479,19 @@ def GridbotBody():
     while(1):
         current_time = time.time()
         cooldown=60
-        time_to_sleep = cooldown - (current_time % cooldown)
+        #sleep to n seconds 
+        til_second=20
+        time_to_sleep = til_second + cooldown - (current_time % cooldown)
         time.sleep(time_to_sleep)
         
         now = datetime.datetime.now()
         hour=now.hour
         minute=now.minute
         second=now.second
-        if(minute%3==0 and second>=30):
-            continue
-        if(minute%3==1 and second<=30):
+        #modify/send order
+        #1.every 3 minutes
+        #2.between 15 second to 45 second
+        if(minute%3!=0):
             continue
         if(hour==13 and minute>20):
             try:
