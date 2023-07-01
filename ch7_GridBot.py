@@ -16,6 +16,8 @@ import pickle
 import datetime
 import threading, time
 from threading import Thread, Lock
+from shioaji import BidAskFOPv1, Exchange
+from shioaji import TickFOPv1, Exchange
 
 REBOOT_HOUR=16
 END_WEEKDAY=4 # Friday
@@ -245,8 +247,8 @@ def GridbotBody():
                         quantity=quantityUpper,
                         action=shioaji.constant.Action.Buy,
                         price_type=shioaji.constant.StockPriceType.LMT,
-                        order_type=shioaji.constant.TFTOrderType.ROD,     
-                        order_lot=shioaji.constant.TFTStockOrderLot.IntradayOdd, 
+                        order_type=shioaji.constant.OrderType.ROD,     
+                        order_lot=shioaji.constant.StockOrderLot.IntradayOdd, 
                         account=api.stock_account,
                     )
                 #產生賣單物件
@@ -256,8 +258,8 @@ def GridbotBody():
                         quantity=abs(quantityUpper),
                         action=shioaji.constant.Action.Sell,
                         price_type=shioaji.constant.StockPriceType.LMT,
-                        order_type=shioaji.constant.TFTOrderType.ROD,
-                        order_lot=shioaji.constant.TFTStockOrderLot.IntradayOdd, 
+                        order_type=shioaji.constant.OrderType.ROD,
+                        order_lot=shioaji.constant.StockOrderLot.IntradayOdd, 
                         account=api.stock_account,
                     )
                 #在交易金額大於trigger的時候掛單
@@ -295,8 +297,8 @@ def GridbotBody():
                         quantity=quantityLower,
                         action=shioaji.constant.Action.Buy,
                         price_type=shioaji.constant.StockPriceType.LMT,
-                        order_type=shioaji.constant.TFTOrderType.ROD,     
-                        order_lot=shioaji.constant.TFTStockOrderLot.IntradayOdd, 
+                        order_type=shioaji.constant.OrderType.ROD,     
+                        order_lot=shioaji.constant.StockOrderLot.IntradayOdd, 
                         account=api.stock_account,
                     )
                 #產生賣單物件
@@ -306,8 +308,8 @@ def GridbotBody():
                         quantity=-quantityLower,
                         action=shioaji.constant.Action.Sell,
                         price_type=shioaji.constant.StockPriceType.LMT,
-                        order_type=shioaji.constant.TFTOrderType.ROD,     
-                        order_lot=shioaji.constant.TFTStockOrderLot.IntradayOdd, 
+                        order_type=shioaji.constant.OrderType.ROD,     
+                        order_lot=shioaji.constant.StockOrderLot.IntradayOdd, 
                         account=api.stock_account,
                     )
                 #在交易金額大於trigger的時候掛單

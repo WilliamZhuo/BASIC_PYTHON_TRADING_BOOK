@@ -1,25 +1,29 @@
 import shioaji
 
 api=0
-person_id=''#你的身分證字號
-passwd=''#你的永豐證券登入密碼
+person_id=''#身分證字號
+api_key=''#api_key
+secret_key=''#secret_key
 CA_passwd=''
 def shioajiLogin(simulation=False):
     global api
-    global person_id
-    global passwd
+    global api_key
+    global secret_key
     global CA_passwd
+    global person_id
     api = shioaji.Shioaji(simulation=simulation)
 
     if(person_id==''):
-        person_id=input("Please input ID:\n")
-    if(passwd==''):
-        passwd=input("Please input PASSWORD:\n")
+        person_id=input("Please input personal id:\n")
+    if(api_key==''):
+        api_key=input("Please input api_key:\n")
+    if(secret_key==''):
+        secret_key=input("Please input secret_key:\n")
     if(CA_passwd==''):
         CA_passwd=input("Please input CA PASSWORD:\n")
     api.login(
-        person_id=person_id, 
-        passwd=passwd, 
+        api_key=api_key, 
+        secret_key=secret_key, 
         contracts_timeout=10000,
         contracts_cb=lambda security_type: print(f"{repr(security_type)} fetch done.")
     )
