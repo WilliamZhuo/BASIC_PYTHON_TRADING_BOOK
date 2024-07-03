@@ -16,32 +16,71 @@ import pickle
 import datetime
 import threading, time
 from threading import Thread, Lock
-from shioaji import BidAskFOPv1, Exchange
-from shioaji import TickFOPv1, Exchange
-
+TERMINATE_IN_WEEKEND=False
 REBOOT_HOUR=16
 END_WEEKDAY=4 # Friday
+USING_LOG=True
 api=shioajiLogin(simulation=False)
 initmoney=0
 g_settlement=0
 g_upperid='0052'
 g_lowerid='00662'
+bot_filename='money_0052_00662.p'
+logfilename='gridbotlog_0052_00662.log'
 trigger=2000 #最低交易金額門檻,避免交易金額太小,錢被手續費低消吃光光
+trigger_percent=0.02 #最低交易金額門檻(百分比)
 ENABLE_PREMARKET=True
 ans=''
-logging.basicConfig(filename='gridbotlog.log', level=logging.DEBUG)
+logging.basicConfig(filename=logfilename, level=logging.DEBUG)
 msglist=[]
-
+g_list_of_trades=[]
+def update_trades(api,bot_trades):            
+    payment=0
+    for trade in bot_trades:
+        orderstatus=trade.status.status
+        if(orderstatus==orderstatus.Cancelled
+           or orderstatus==orderstatus.Failed
+           or orderstatus==orderstatus.Inactive):
+            pass
+        elif(orderstatus==orderstatus.Filled
+           or orderstatus==orderstatus.PartFilled
+           or orderstatus==orderstatus.PendingSubmit
+           or orderstatus==orderstatus.PreSubmitted
+           or orderstatus==orderstatus.Submitted):
+           #Buy/Sell
+           direction=trade.order.action.name
+           stockid=trade.contract.code
+           deal_quantity=0
+           order_quantity=trade.status.order_quantity
+           deals=trade.status.deals
+           deal_money=0
+           for deal in deals:
+                price=deal.price
+                quantity=deal.quantity
+                deal_money+=price*quantity
+                deal_quantity+=quantity
+           if(direction == 'Buy'):
+               payment-=deal_money
+           elif(direction == 'Sell'):
+               payment+=deal_money
+           else:
+               print('update_trades:unknown direction')
+        else:
+            print('update_trades:unknown orderstatus')
+    return payment
 def GridbotBody():
+    global initmoney
+    global g_settlement
+    global g_list_of_trades 
     class GridBot:
         upperid=g_upperid
         lowerid=g_lowerid
         
-        parameters={'BiasUpperLimit':1.0,\
-             'UpperLimitPosition':0.4,\
-             'BiasLowerLimit':0.85,\
+        parameters={'BiasUpperLimit':1.2,\
+             'UpperLimitPosition':0.1,\
+             'BiasLowerLimit':0.9,\
              'LowerLimitPosition':0.9,\
-             'BiasPeriod':81}
+             'BiasPeriod':247}
         year=0
         month=0
         day=0
@@ -68,7 +107,7 @@ def GridbotBody():
             if(now.year!=self.year or now.month!= self.month or  now.day!=self.day):
                 #從Yfinance抓取資料
                 upper = yf.Ticker(self.upperid+".tw")
-                upper_hist = upper.history(period="3mo")
+                upper_hist = upper.history(period="1y")
                 #計算均線
                 period=self.parameters['BiasPeriod']       
                 upper_close=upper_hist['Close']
@@ -77,7 +116,7 @@ def GridbotBody():
                 #先計算 股票A / 股票B 的收盤價，再取平均
                 if(self.lowerid!='Cash'):                
                     lower = yf.Ticker(self.lowerid+".tw")
-                    lower_hist = lower.history(period="3mo")
+                    lower_hist = lower.history(period="1y")
                     lower_close=lower_hist['Close']
                     close=(upper_close/lower_close).dropna()
                 else:
@@ -113,15 +152,25 @@ def GridbotBody():
         def calculateSharetarget(self,upperprice,lowerprice):
             #計算目標部位百分比
             shareTarget=self.calculateGrid(upperprice,lowerprice)
-            
-            self.money=initmoney+g_settlement            
+            global initmoney
+            global g_list_of_trades
+            settlement_trades=update_trades(api,g_list_of_trades)
+            #mutexgSettle.acquire()
+            self.money=initmoney+settlement_trades  
+            #mutexgSettle.release()          
+            #mutexgSettle.acquire()
+            #self.money=initmoney+g_settlement  
+            #mutexgSettle.release()          
             uppershare=self.uppershare
             lowershare=self.lowershare
             money=self.money
     
             #計算機器人裡面有多少資產(現金+股票)
-            capitalInBot=money+uppershare*upperprice+lowershare*lowerprice
-    
+            capitalInBot=money+uppershare*upperprice+lowershare*lowerprice    
+            logging.debug('uppershare:'+str(uppershare))
+            logging.debug('lowershare:'+str(lowershare))
+            logging.debug('money:'+str(money))
+            
             #計算目標部位(股數)
             uppershareTarget=int(shareTarget*capitalInBot/upperprice)
             lowershareTarget=int((1.0-shareTarget)*capitalInBot/lowerprice)
@@ -145,7 +194,12 @@ def GridbotBody():
             LowerLimitPosition=self.parameters['LowerLimitPosition']
             BiasPeriod=self.parameters['BiasPeriod']
             
-            Bias=(upperprice/lowerprice)/MA               
+            Bias=(upperprice/lowerprice)/MA      
+                    
+            if(USING_LOG):
+                Bias=np.log(Bias)
+                BiasUpperLimit=np.log(BiasUpperLimit)
+                BiasLowerLimit=np.log(BiasLowerLimit)
             shareTarget=(Bias-BiasLowerLimit)/(BiasUpperLimit-BiasLowerLimit)
             shareTarget=shareTarget*(UpperLimitPosition-LowerLimitPosition)+LowerLimitPosition
             shareTarget=max(shareTarget,UpperLimitPosition)
@@ -275,11 +329,13 @@ def GridbotBody():
                             s=str(datetime.datetime.now())
                             s=s+'buy upper'                
                             logging.debug(s)
+                            g_list_of_trades.append(trade)
                     else:
                         trade = api.place_order(contract, order) 
                         s=str(datetime.datetime.now())
                         s=s+'sell upper'                
                         logging.debug(s)
+                        g_list_of_trades.append(trade)
             #這邊開始掛分母的單
             #首先確保掛單的量不會把交割款用完
             code=self.lowerid
@@ -321,11 +377,13 @@ def GridbotBody():
                         s=str(datetime.datetime.now())
                         s=s+'buy lower'
                         logging.debug(s)
+                        g_list_of_trades.append(trade)
                     else:
                         trade = api.place_order(contract, order)
                         s=str(datetime.datetime.now())
                         s='sell lower'
                         logging.debug(s)
+                        g_list_of_trades.append(trade)
            
     #成交價             
     snaprice={}
@@ -353,12 +411,13 @@ def GridbotBody():
         with open(filename, 'rb') as handle:
             return pickle.load(handle)
     try:
-        initmoney=pickle_read('money.p')
+        initmoney=pickle_read(bot_filename)
     except:
         initmoney=0
     totalcapital=initmoney+stockPrice[g_upperid]*bot1.uppershare+stockPrice[g_lowerid]*bot1.lowershare
     #更新Trigger大小,在資產很多的時候固定2000會有點少
-    trigger=max(2000,totalcapital*0.005)
+    global trigger
+    trigger=max(trigger,totalcapital*trigger_percent)
     print("money:"+str(initmoney))
     print("upper:"+str(stockPrice[g_upperid]*bot1.uppershare))
     print("lower:"+str(stockPrice[g_lowerid]*bot1.lowershare))
@@ -466,6 +525,18 @@ def GridbotBody():
         asklist=[float(i) for i in bidask['ask_price']]
         stockBid[code]=bidlist[0]
         stockAsk[code]=asklist[0]
+        '''
+        logging.debug('bidlist[0]:'+str(bidlist[0]))
+        logging.debug('bidlist[1]:'+str(bidlist[1]))
+        logging.debug('bidlist[2]:'+str(bidlist[2]))
+        logging.debug('bidlist[3]:'+str(bidlist[3]))
+        logging.debug('bidlist[4]:'+str(bidlist[4]))        
+        logging.debug('asklist[0]:'+str(asklist[0]))
+        logging.debug('asklist[1]:'+str(asklist[1]))
+        logging.debug('asklist[2]:'+str(asklist[2]))
+        logging.debug('asklist[3]:'+str(asklist[3]))
+        logging.debug('asklist[4]:'+str(asklist[4]))
+        '''
         mutexBidAskDict[code].release()
     api.quote.set_on_bidask_stk_v1_callback(STK_BidAsk_callback)
     
@@ -501,8 +572,14 @@ def GridbotBody():
             except Exception as e:
                 logging.error('jobs_per1min  Error Message A: '+ str(e))
             continue
-        if(hour>=14 and hour<=15):
-            pickle_dump( "money.p",bot1.money)
+        if(hour>=14 and hour<=15):            
+            settlement_trades=update_trades(api,g_list_of_trades)
+            print('End of day settlement_trades:'+str(settlement_trades))
+            print('End of day g_settlement:'+str(g_settlement))
+            bot1.money=initmoney+g_settlement 
+            g_list_of_trades=[]
+            g_settlement=0
+            pickle_dump( bot_filename,bot1.money)
             break
         if(not ENABLE_PREMARKET):
             if(hour<9 or (hour>13)):
@@ -527,6 +604,21 @@ def GridbotBody():
         mutexDict[g_upperid].release()
         mutexBidAskDict[g_lowerid].release()
         mutexBidAskDict[g_upperid].release()   
+
+        logging.debug('bot1.stockPrice[g_upperid]:'+str(bot1.stockPrice[g_upperid]))
+        logging.debug('bot1.stockPrice[g_lowerid]:'+str(bot1.stockPrice[g_lowerid]))
+        logging.debug('bot1.stockBid[g_upperid]:'+str(bot1.stockBid[g_upperid]))
+        logging.debug('bot1.stockBid[g_lowerid]:'+str(bot1.stockBid[g_lowerid]))
+        logging.debug('bot1.stockAsk[g_upperid]:'+str(bot1.stockAsk[g_upperid]))
+        logging.debug('bot1.stockAsk[g_lowerid]:'+str(bot1.stockAsk[g_lowerid]))
+        bid=bot1.stockBid[g_upperid]
+        ask=bot1.stockAsk[g_upperid]
+        if(abs(ask-bid)>0.05*(ask+bid)/2):
+            continue
+        bid=bot1.stockBid[g_lowerid]
+        ask=bot1.stockAsk[g_lowerid]
+        if(abs(ask-bid)>0.05*(ask+bid)/2):
+            continue
         #更新買賣單
         bot1.updateOrder()
 
@@ -550,5 +642,5 @@ while(1):
         api.logout()
         api=ShioajiLogin.shioajiLogin(simulation=False)
         GridbotBody()
-    if(END_WEEKDAY==weekday):
+    if(END_WEEKDAY==weekday and TERMINATE_IN_WEEKEND):
         break

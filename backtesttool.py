@@ -30,7 +30,7 @@ def backtest_signal(
     #把買賣訊號往後移一天,因為今天收盤的訊號下一天開盤才會買賣
     ####################################
     position=buy.shift(1)
-    position[0]=0.0
+    position.iloc[0] =0.0
     #list() io比series快
     openprice_l=openprice.tolist()
     position_l=position.tolist()    
@@ -130,11 +130,11 @@ def calculateMDD(retSeries):
 #也可以傳入return series的prefix product
 def calculateMDD_fromClose(close):
     prefixProdSeries=close
-    maxval=prefixProdSeries[0]
+    maxval=prefixProdSeries.iloc[0]
     MDD=0
     for i in range(0,prefixProdSeries.size,1):
-        maxval=max(prefixProdSeries[i],maxval)
-        temp=1.0-prefixProdSeries[i]/maxval
+        maxval=max(prefixProdSeries.iloc[i],maxval)
+        temp=1.0-prefixProdSeries.iloc[i]/maxval
         if(temp>MDD):
             MDD=temp
     return MDD

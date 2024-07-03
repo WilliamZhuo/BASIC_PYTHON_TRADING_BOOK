@@ -25,7 +25,7 @@ low=df_MXFR1['Low']
 #'BBAND'
 #'PriceChannel'
 #'Grid'
-target='RSI'
+target='Grid'
 
 #########################################
 #5.1 MACD指標
@@ -601,19 +601,113 @@ def createGridSignal(df,
                      UpperLimitPosition,
                      BiasLowerLimit,
                      LowerLimitPosition,
-                     BiasPeriod):
-
-    close=df['Close']
-    
+                     BiasPeriod,
+                     USING_LOG=True):
+    close=df['Close']    
     Bias=close/close.rolling(window=BiasPeriod).mean()
-    Bias=Bias.fillna(method='bfill')
-    
+    #LOG實測對ETF配對沒甚麼用,但留著
+    if(USING_LOG):
+        Bias=numpy.log(Bias)
+        BiasUpperLimit=numpy.log(BiasUpperLimit)
+        BiasLowerLimit=numpy.log(BiasLowerLimit)
+    Bias=Bias.bfill()
     positiondiff=UpperLimitPosition-LowerLimitPosition
     biasdiff=BiasUpperLimit-BiasLowerLimit
     position=LowerLimitPosition+(Bias-BiasLowerLimit)*positiondiff/biasdiff
     position[Bias<=BiasLowerLimit]=LowerLimitPosition
     position[Bias>=BiasUpperLimit]=UpperLimitPosition
     return position
+
+
+import ray
+@ray.remote
+def for_parallel_Grid(df,
+     BiasUpper,
+     UpperPosition,
+     BiasLower,
+     LowerPosition,
+     period):    
+        if(BiasUpper<=BiasLower):
+            return (0,0)
+        if(UpperPosition>=LowerPosition):
+            return (0,0)
+        
+        openPrice=df['Open']
+        #製作買賣訊號
+        BuySignal=createGridSignal(df,
+             BiasUpper,
+             UpperPosition,
+             BiasLower,
+             LowerPosition,
+             period)
+        #對訊號進行回測
+        retStrategy,ret_series=backtesttool.backtest_signal(
+            openPrice
+            ,BuySignal)
+        return (retStrategy,ret_series)
+
+def OptimizeGrid_Ray(
+        df,
+        range_BiasUpper,#=numpy.arange(1.0,2.0,0.1,dtype=float)
+        range_UpperPosition,#=numpy.arange(0.1,0.5,0.1,dtype=float)        
+        range_BiasLower,#=numpy.arange(0.5,1.0,0.1,dtype=float)
+        range_LowerPosition,#=numpy.arange(0.5,1.0,0.1,dtype=float)
+        range_period #=numpy.arange(2,100,1,dtype=int)
+        ):
+    ray.shutdown()
+    ray.init()
+    openPrice=df['Open']
+    closePrice=df['Close']  
+    bestret=0
+    bestret_series=[]
+    best_BiasUpper=0
+    best_UpperPosition=0
+    best_BiasLower=0
+    best_LowerPosition=0
+    best_period=0
+    df_shared = ray.put(df)
+    l=[]
+    for BiasUpper in range_BiasUpper:
+        for UpperPosition in range_UpperPosition:
+            for BiasLower in range_BiasLower:
+                for LowerPosition in range_LowerPosition:
+                    for period in range_period:                                                
+                        ret= for_parallel_Grid.remote(df_shared,
+                             BiasUpper,
+                             UpperPosition,
+                             BiasLower,
+                             LowerPosition,
+                             period)
+                        l.append(ret)
+    l=ray.get(l)
+    l_index=0
+    dict_ret={}
+    dict_series={}
+    for BiasUpper in range_BiasUpper:
+        for UpperPosition in range_UpperPosition:
+            for BiasLower in range_BiasLower:
+                for LowerPosition in range_LowerPosition:
+                    for period in range_period:    
+                        result=l[l_index]
+                        key=(BiasUpper,
+                                UpperPosition,
+                                BiasLower,
+                                LowerPosition,
+                                period)
+                        dict_ret[key]=result[0]
+                        dict_series[key]=result[1]
+                        l_index=l_index+1     
+    bestargs=max(dict_ret, key=dict_ret.get)
+    bestret=dict_ret[bestargs]
+    bestret_series=dict_series[bestargs]
+    best_BiasUpper=bestargs[0]
+    best_UpperPosition=bestargs[1]
+    best_BiasLower=bestargs[2]
+    best_LowerPosition=bestargs[3]
+    best_period=bestargs[4]  
+    return bestret,bestret_series,\
+        (best_BiasUpper,best_UpperPosition,best_BiasLower,best_LowerPosition,best_period)
+
 def OptimizeGrid(
         df,
         range_BiasUpper,#=numpy.arange(1.0,2.0,0.1,dtype=float)
@@ -672,10 +766,17 @@ def OptimizeGrid(
 
 if(target=='Grid'):
     import yfinance as yf    
-    tw = yf.Ticker("0052.tw")
-    TW_hist = tw.history(period="5y")
-    us = yf.Ticker("00662.tw")
-    US_hist = us.history(period="5y")
+    set1={}
+    set1['stock1']="0052.tw"
+    set1['stock2']="00662.tw"
+    set2={}
+    set2['stock1']="00652.tw" #india
+    set2['stock2']="00661.tw" #japan
+    theset=set1
+    tw = yf.Ticker(theset['stock1'])
+    TW_hist = tw.history(period="10y")
+    us = yf.Ticker(theset['stock2'])
+    US_hist = us.history(period="10y")
     #兩邊歷史資料長度不一樣,取交集
     idx = numpy.intersect1d(TW_hist.index, US_hist.index)
     TW_hist = TW_hist.loc[idx]
@@ -698,33 +799,15 @@ if(target=='Grid'):
         ,'Open':TW_open/US_open\
         ,'High':TW_high/US_low\
         ,'Low':TW_low/US_high}).dropna() 
+    import time
+    start_time = time.time()
     #最佳化 BiasUpper,BiasLower,period
     range_BiasUpper=numpy.arange(1.0,2.0,0.1,dtype=float)
-    range_UpperPosition=numpy.arange(0.1,0.2,0.1,dtype=float)        
-    range_BiasLower=numpy.arange(0.5,1.0,0.1,dtype=float)
-    range_LowerPosition=numpy.arange(0.9,1.0,0.1,dtype=float)
-    range_period=numpy.arange(2,100,1,dtype=int)
-    bestret,bestret_series,parameters=OptimizeGrid(
-        kbars,
-        range_BiasUpper,
-        range_UpperPosition,
-        range_BiasLower,
-        range_LowerPosition,
-        range_period
-        )
-    (best_BiasUpper,\
-     best_UpperPosition,\
-     best_BiasLower,\
-     best_LowerPosition,\
-     best_period)=parameters
-    
-    #最佳化 range_UpperPosition,range_LowerPosition,range_period
-    range_BiasUpper=numpy.arange(best_BiasUpper,best_BiasUpper+0.1,0.1,dtype=float)
     range_UpperPosition=numpy.arange(0.1,0.5,0.1,dtype=float)        
-    range_BiasLower=numpy.arange(best_BiasLower,best_BiasLower+0.1,0.1,dtype=float)
+    range_BiasLower=numpy.arange(0.5,1.0,0.1,dtype=float)
     range_LowerPosition=numpy.arange(0.5,1.0,0.1,dtype=float)
-    range_period=numpy.arange(2,100,1,dtype=int)
-    bestret,bestret_series,parameters=OptimizeGrid(
+    range_period=numpy.arange(2,250,1,dtype=int)
+    bestret,bestret_series,parameters=OptimizeGrid_Ray(
         kbars,
         range_BiasUpper,
         range_UpperPosition,
@@ -736,25 +819,9 @@ if(target=='Grid'):
      best_UpperPosition,\
      best_BiasLower,\
      best_LowerPosition,\
-     best_period)=parameters
-        
+     best_period)=parameters    
     
-    #最佳化 BiasUpper,BiasLower,range_period
-    range_BiasUpper=numpy.arange(1.0,2.0,0.1,dtype=float)
-    range_UpperPosition=numpy.arange(best_UpperPosition,best_UpperPosition+0.1,0.1,dtype=float)        
-    range_BiasLower=numpy.arange(0.5,1.0,0.1,dtype=float)
-    range_LowerPosition=numpy.arange(best_LowerPosition,best_LowerPosition+0.1,0.1,dtype=float)
-    range_period=numpy.arange(2,100,1,dtype=int)
-    bestret,bestret_series,parameters=OptimizeGrid(
-        kbars,
-        range_BiasUpper,
-        range_UpperPosition,
-        range_BiasLower,
-        range_LowerPosition,
-        range_period
-        )
-    
-    
+    print("--- %s seconds ---" % (time.time() - start_time))
     ### 跨市網格交易報酬計算 ###    
     (best_BiasUpper\
     ,best_UpperPosition\
