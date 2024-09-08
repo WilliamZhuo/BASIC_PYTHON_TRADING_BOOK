@@ -270,11 +270,11 @@ def GridbotBody():
             #實際取消訂單的部分
             for i in range(0,len(tradeUpper),1):
                 api.update_status()
-                api.cancel_order(trade=tradeUpper[i])
+                api.cancel_order(trade=tradeUpper[i],timeout=50000)
             if(self.lowerid!='Cash'):
                 for i in range(0,len(tradeLower),1):
                     api.update_status()
-                    api.cancel_order(trade=tradeLower[i])
+                    api.cancel_order(trade=tradeLower[i],timeout=50000)
                     
         def sendOrders(self):
             #計算要掛多少股
